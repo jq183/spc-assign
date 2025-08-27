@@ -5,7 +5,6 @@
 #include <iomanip>
 using namespace std;
 
-// Forward declaration of payment function
 void proceedPayment(Participant& participant);
 
  struct Participant
@@ -104,8 +103,8 @@ void addParticipants(vector<Participant>& participants) {
     do {
        Participant ptcp;
        
-       cout << "Adding New Participant" << endl;
-       cout << "-----------------------"<<endl;
+       cout << "Add New Participant" << endl;
+       cout << "--------------------"<<endl;
        cout << "Enter participant name: ";
        ptcp.name = getValidName();
        
@@ -115,11 +114,6 @@ void addParticipants(vector<Participant>& participants) {
        ptcp.id = static_cast<int>(participants.size()) + 1;
        
                participants.push_back(ptcp);
-        
-        cout << "Participant added successfully!" << endl;
-        cout << "ID: " << ptcp.id << endl;
-        cout << "Name: " << ptcp.name << endl;
-        cout << "Role: " << ptcp.role << endl;
 
         proceedPayment(ptcp);
        
