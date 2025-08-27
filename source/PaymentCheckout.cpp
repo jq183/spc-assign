@@ -109,7 +109,7 @@ static char getValidYesNoChoice() {
     string input;
     bool isValidChoice = false;
     do {
-        cout << prompt;
+        cout << "Proceed with payment? (y/n): ";
         getline(cin, input);
         if (input.empty()) {
             cout << "Error: Please enter 'y' or 'n' only." << endl;
@@ -141,7 +141,7 @@ void proceedPayment(Participant& participant) {
     cout << "Role: " << participant.role << endl;
     cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
     
-    char proceed = getValidYesNoChoice("Proceed with payment? (y/n): ");
+    char proceed = getValidYesNoChoice();
     if (proceed != 'y') {
         cout << "Payment cancelled." << endl;
         return;
@@ -197,7 +197,6 @@ void processAllPayments(vector<Participant>& participants) {
         }
     }
     
-    cout << "\nBulk payment processing completed. " << processed << " participants processed." << endl;
 }
 
 void displayPaymentSummary(const vector<Participant>& participants) {
@@ -247,7 +246,8 @@ void showPaymentMenu(vector<Participant>& participants) {
     
     bool continueMenu = true;
     while (continueMenu) {
-        cout << "\n=== Payment Menu ===" << endl;
+        cout << "Payment Menu" << endl;
+        cout << "------------" << endl;
         cout << "1. Process payment for one participant" << endl;
         cout << "2. Process payments for all participants" << endl;
         cout << "3. Show payment summary" << endl;
@@ -317,8 +317,8 @@ void processSinglePayment(vector<Participant>& participants) {
              << setw(12) << fixed << setprecision(2) << participant.amountDue
              << setw(8) << (participant.paid ? "Yes" : "No") << endl;
     }
-    
-    cout << "\nEnter participant ID to process payment: ";
+    cout << endl;
+    cout << "Enter participant ID to process payment: ";
     string input;
     getline(cin, input);
     
