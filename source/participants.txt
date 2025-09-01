@@ -1,0 +1,29 @@
+Event ID: 1
+Event Name: a
+Participants:
+  - ID: 1, Name: b, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: Today
+  - ID: 2, Name: r, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: Today
+------------------------------
+Event ID: 2
+Event Name: a
+Participants: None
+------------------------------
+Event ID: 3
+Event Name: abc
+Participants:
+  - ID: 3, Name: 1, Role: Host/Vendor, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 4, Name: 2, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 5, Name: 3, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 6, Name: 4, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 9, Name: qwerty, Role: Host/Vendor, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 13, Name: 1, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+------------------------------
+Event ID: 4
+Event Name: 12
+Participants:
+  - ID: 7, Name: 1, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: Today
+  - ID: 8, Name: 2, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: Today
+  - ID: 10, Name: q, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: Today
+  - ID: 11, Name: qw, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: Today
+  - ID: 12, Name: q, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+------------------------------
