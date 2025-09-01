@@ -12,7 +12,7 @@ To-Do
 Payment Module - Complete
 Registration Module
 (Zetton)
-Booking Module
+Booking Module - In progress
 Reminder Module
 (Heng Mien)
 Marketing Module
@@ -20,6 +20,11 @@ User/Login Module
 (HanYuan)
 Monitor Module
 Report Module
+*/
+
+/*
+Booking
+
 */
 
 struct Participant
@@ -32,6 +37,52 @@ struct Participant
     string paymentMethod;
     string paymentDate;
  };
+
+struct Booking
+{
+    string eventName;
+    string eventType;
+    string venue;
+    string dateTime;
+    string deadline;
+    string status;
+    vector<string> guests;
+    int guestCount;
+    int eventId;
+};
+
+//Please sort your functions into modules here to easily know
+
+//Extras
+string getValidInput(const string &title);
+char getValidYesNoChoice();
+
+//Payment
+string getValidName();
+string getValidPaymentMethod();
+double getValidAmount();
+void proceedPayment(Participant& participant);
+void processAllPayments(vector<Participant>& participants);
+void displayPaymentSummary(const vector<Participant>& participants);
+void showPaymentMenu(vector<Participant>& participants);
+void processSinglePayment(vector<Participant>& participants);
+
+//Registration
+int getValidRoleChoice();
+void addParticipants(vector<Participant>& participants);
+
+//Booking
+
+//Reminder
+
+//Marketing
+
+//User/Login
+
+//Monitor
+
+//Reporting
+
 
 string getValidName() {
     string name;
@@ -110,11 +161,11 @@ char getValidYesNoChoice() {
         }
      } while (!isValidChoice);
   }
- 
- void addParticipants(vector<Participant>& participants) {
-     char choice;
+
+void addParticipants(vector<Participant>& participants) {
+    char choice;
      
-     do {
+    do {
         Participant ptcp;
         
         cout << "Add New Participant" << endl;
@@ -128,17 +179,17 @@ char getValidYesNoChoice() {
         ptcp.id = static_cast<int>(participants.size()) + 1;
         
                 participants.push_back(ptcp);
- 
+
          proceedPayment(ptcp);
         
-        choice = getValidYesNoChoice("Add another participant? (y/n): ");
+        choice = getValidYesNoChoice();
         
      } while (choice == 'y');
      
     
  }
  
- string getValidPaymentMethod() {
+string getValidPaymentMethod() {
     string input;
     bool isValidChoice = false;
     do {
@@ -222,31 +273,6 @@ double getValidAmount() {
             cout << "Error: Amount must be greater than 0." << endl;
         }
     } while (!isValidAmount);
-}
-
-char getValidYesNoChoice() {
-    char choice;
-    string input;
-    bool isValidChoice = false;
-    do {
-        cout << "Proceed with payment? (y/n): ";
-        getline(cin, input);
-        if (input.empty()) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
-            continue;
-        } else if (input.length() > 1) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
-            continue;
-        } else {
-            choice = tolower(input[0]);
-            if (choice == 'y' || choice == 'n') {
-                isValidChoice = true;
-                return choice;
-            } else {
-                cout << "Error: Please enter 'y' or 'n' only." << endl;
-            }
-        }
-    } while (!isValidChoice);
 }
 
 void proceedPayment(Participant& participant) {
@@ -482,6 +508,19 @@ void processSinglePayment(vector<Participant>& participants) {
     
     proceedPayment(*selectedParticipant);
 }
+
+string getValidInput(string &title) {
+    string input;
+    do {
+        cout << title;
+        getline(cin, input);
+        if (input.empty()) {
+            cout << "Input cannot be empty. Try again.\n";
+        }
+    } while (input.empty());
+    return input;
+}
+
 
 int main(){
     
