@@ -6,6 +6,21 @@
 #include <fstream>
 
 using namespace std;
+/*
+To-Do
+(JQ)
+Payment Module - Complete
+Registration Module
+(Zetton)
+Booking Module
+Reminder Module
+(Heng Mien)
+Marketing Module
+User/Login Module
+(HanYuan)
+Monitor Module
+Report Module
+*/
 
 struct Participant
  {
