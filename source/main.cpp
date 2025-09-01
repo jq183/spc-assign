@@ -1,9 +1,12 @@
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <string>
 #include <cctype>
 #include <fstream>
+#include <ctime>
+#include <regex>
 
 using namespace std;
 /*
@@ -12,7 +15,7 @@ To-Do
 Payment Module - Complete
 Registration Module
 (Zetton)
-Booking Module - In progress
+Booking Module - Complete
 Reminder Module
 (Heng Mien)
 Marketing Module
@@ -20,11 +23,6 @@ User/Login Module
 (HanYuan)
 Monitor Module
 Report Module
-*/
-
-/*
-Booking
-
 */
 
 struct Participant
@@ -46,15 +44,17 @@ struct Booking
     string dateTime;
     string deadline;
     string status;
-    vector<string> guests;
+    vector<int> partId;
     int guestCount;
     int eventId;
 };
 
 //Please sort your functions into modules here to easily know
 
-//Extras
+//Validation
 string getValidInput(const string &title);
+string getValidDateTime(const string &title);
+string getValidDateline(const string &title);
 char getValidYesNoChoice();
 
 //Payment
@@ -72,6 +72,14 @@ int getValidRoleChoice();
 void addParticipants(vector<Participant>& participants);
 
 //Booking
+Booking createBooking(int id);
+time_t deadline(const string &deadline);
+void saveBookings(vector<Booking> &bookings, const string &file);
+void saveParticipants(vector<Participant> &part, const string &file);
+void loadBookings(vector<Booking> &bookings, const string &file);
+void loadParticipants(vector<Booking> &bookings, const string &file);
+void checkDeadlines(vector<Booking> &bookings);
+void destroyEvent(vector<Booking> &bookings, int eventId, const string &bookFile, const string &partFile);
 
 //Reminder
 
@@ -178,9 +186,9 @@ void addParticipants(vector<Participant>& participants) {
         
         ptcp.id = static_cast<int>(participants.size()) + 1;
         
-                participants.push_back(ptcp);
+        participants.push_back(ptcp);
 
-         proceedPayment(ptcp);
+        proceedPayment(ptcp);
         
         choice = getValidYesNoChoice();
         
@@ -509,7 +517,7 @@ void processSinglePayment(vector<Participant>& participants) {
     proceedPayment(*selectedParticipant);
 }
 
-string getValidInput(string &title) {
+string getValidInput(const string &title) {
     string input;
     do {
         cout << title;
@@ -521,7 +529,221 @@ string getValidInput(string &title) {
     return input;
 }
 
-
-int main(){
-    
+string getValidDateTime(const string &title) {
+    string input;
+    regex pattern{"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"};
+    do {
+        cout << title;
+        getline(cin, input);
+        if (input.empty()) {
+            cout << "Input cannot be empty. Try again.\n";
+        }else if (!regex_match(input, pattern)) {
+            cout << "Input format incorrect. Try again.\n";
+        }
+    } while (input.empty());
+    return input;
 }
+
+string getValidDateline(const string &title) {
+    string input;
+    regex pattern{"\d{4}-\d{2}-\d{2}"};
+    do {
+        cout << title;
+        getline(cin, input);
+        if (input.empty()) {
+            cout << "Input cannot be empty. Try again.\n";
+        }else if (!regex_match(input, pattern)) {
+            cout << "Input format incorrect. Try again.\n";
+        }
+    } while (input.empty());
+    return input;
+}
+
+Booking createBooking(int id) {
+    Booking b;
+    b.eventId = id;
+
+    cout << "\n--- Create a New Event Booking ---\n";
+    b.eventName = getValidInput("Enter event name: ");
+    b.eventType = getValidInput("Enter event type: ");
+    b.venue = getValidInput("Enter venue: ");
+    b.dateTime = getValidDateTime("Enter date & time (YYYY-MM-DD HH:MM): ");
+    b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
+    b.status = "Open";
+    cout << "Enter maximum number of guests: ";
+    while (!(cin >> b.guestCount) || b.guestCount < 0) {
+        cout << "Invalid number. Enter a non-negative value: ";
+        cin.clear();
+        cin.ignore(10000, '\n');
+    }
+    cin.ignore();
+
+    return b;
+}
+
+void saveBookings(vector<Booking> &bookings, const string &file) {
+    ofstream outFile(file);
+    if (!outFile) {
+        cerr << "Error opening file: " << file << endl;
+        return;
+    }
+
+    for (Booking &b : bookings) {
+        outFile << "Event ID: " << b.eventId << "\n";
+        outFile << "Name: " << b.eventName << "\n";
+        outFile << "Type: " << b.eventType << "\n";
+        outFile << "Venue: " << b.venue << "\n";
+        outFile << "Date & Time: " << b.dateTime << "\n";
+        outFile << "Deadline: " << b.deadline << "\n";
+        outFile << "Status: " << b.status << "\n";
+        outFile << "Guest Limit: " << b.guestCount << "\n";
+        outFile << string(50, '-') << "\n";
+    }
+
+    outFile.close();
+}
+
+void saveParticipants(vector<Booking> &bookings, const string &file) {
+    ofstream outFile(file);
+    if (!outFile) {
+        cerr << "Error opening file: " << file << endl;
+        return;
+    }
+    for (Booking &b : bookings) {
+        outFile << "Event ID: " << b.eventId << "\n";
+        outFile << "Participant ID: ";
+        for (int id: b.partId) {
+            outFile << id << " ";
+        }
+        outFile << "\n";
+    }
+
+    outFile.close();
+}
+
+void loadBookings(vector<Booking> &bookings, const string &file) {
+    ifstream inFile(file);
+    if (!inFile) {
+        cout << "No booking found.\n";
+        return;
+    }
+
+    Booking b;
+    string line;
+
+    while (getline(inFile, line)) {
+        if (line.find("Event ID: ") == 0) {
+            b.eventId = stoi(line.substr(10));
+        }
+        else if (line.find("Name: ") == 0) {
+            b.eventName = line.substr(6);
+        }
+        else if (line.find("Type: ") == 0) {
+            b.eventType = line.substr(6);
+        }
+        else if (line.find("Venue: ") == 0) {
+            b.venue = line.substr(7);
+        }
+        else if (line.find("Date & Time: ") == 0) {
+            b.dateTime = line.substr(13);
+        }
+        else if (line.find("Deadline: ") == 0) {
+            b.deadline = line.substr(10);
+        }
+        else if (line.find("Status: ") == 0) {
+            b.status = line.substr(8);
+        }
+        else if (line.find("Guest Limit: ") == 0) {
+            b.guestCount = stoi(line.substr(13));
+        }
+        else if (line.find("--------------------------------------------------") == 0) {
+            // Finished one booking entry
+            bookings.push_back(b);
+        }
+    }
+
+    inFile.close();
+    cout << "Bookings loaded successfully (" << bookings.size() << " events).\n";
+}
+
+void loadParticipants(vector<Booking> &bookings, const string &file) {
+    ifstream inFile(file);
+    if (!inFile) {
+        cerr << "Error opening file: " << file << endl;
+        return;
+    }
+
+    string line;
+    int currentEventId = -1;
+
+    while (getline(inFile, line)) {
+        if (line.find("Event ID: ") == 0) {
+            currentEventId = stoi(line.substr(10));
+        }
+        else if (line.find("Participant ID: ") == 0 && currentEventId != -1) {
+            istringstream iss(line.substr(15));
+            int id;
+            while (iss >> id) {
+                for (size_t i = 0; i < bookings.size(); i++) {
+                    if (bookings[i].eventId == currentEventId) {
+                        bookings[i].partId.push_back(id);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    inFile.close();
+    cout << "Participants loaded successfully.\n";
+}
+
+time_t deadline(const string &deadline) {
+    tm t = {};
+    int year, month, day;
+
+    if (sscanf(deadline.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
+        cerr << "Invalid deadline format: " << deadline << endl;
+        return -1;
+    }
+
+    t.tm_year = year - 1900; // years since 1900
+    t.tm_mon = month - 1;    // months 0-11
+    t.tm_mday = day;
+    t.tm_hour = 0;
+    t.tm_min = 0;
+    t.tm_sec = 0;
+
+    return mktime(&t);
+}
+
+void checkDeadlines(vector<Booking> &bookings) {
+    time_t now = time(0); // current system time
+
+    for (int i = 0; i < (int)bookings.size(); i++) {
+        time_t deadlineTime = deadline(bookings[i].deadline);
+
+        if (deadlineTime != -1 && deadlineTime < now) {
+            bookings[i].status = "Closed";  // deadline passed
+        } else {
+            bookings[i].status = "Open";    // still valid
+        }
+    }
+}
+
+void destroyEvent(vector<Booking> &bookings, int eventId, const string &bookFile, const string &partFile) {
+    for (int i = 0; i < (int)bookings.size(); i++) {
+        if (bookings[i].eventId == eventId) {
+            bookings.erase(bookings.begin() + i); // remove booking from memory
+            cout << "Booking with Event ID " << eventId << " and its participants have been deleted.\n";
+            break;
+        }
+    }
+
+    saveBookings(bookings, bookFile);
+    saveParticipants(bookings, partFile);
+}
+
+
+int main(){}
+
