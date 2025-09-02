@@ -1,12 +1,3 @@
-#include <iostream>
-#include <iomanip>
-#include <string>
-#include <vector>
-#include <fstream>
-#include <algorithm>
-#include <regex>
-using namespace std;
-
 struct PersonalInfo{
 	string fullName;
 	string email;
