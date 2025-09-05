@@ -24,7 +24,7 @@ Marketing Module
 User/Login Module
 (HanYuan)
 Monitor Module-Complete
-Report Module
+Report Module-Complete
 */
 
 struct Participant
@@ -54,7 +54,7 @@ struct Booking
 struct EventState {
     Booking booking;
     string quickNote[3][50]; // [type][index]
-    vertor<Review> review;
+    vector<Review> review;
 };
 
 struct Review
@@ -121,10 +121,9 @@ EventState convertBookingToEventState(const Booking& b);
 void printQuickNotes(const EventState& e);
 void monitorEvent(vector<Booking>& bookings);
 
-
 //Reporting
-
-
+void generateReport(EventState e);
+void readReport(const string& filename)
 
 void showMainMenu(vector<Booking>& bookings);
 
@@ -1655,7 +1654,7 @@ void monitorEvent(vector<Booking>& bookings) {
     cout << string(60, '-') << endl;
 
     if (getValidYesNoChoice("Selected Event?(Y/N):\n") == 'y') {
-        startMonitor(selectedEvent);
+        startMonitoring(selectedEvent);
     }
     else {
         system("cls");
@@ -1706,56 +1705,101 @@ EventState convertBookingToEventState(const Booking& b) {
     return e;
 }
 
-void startMonitor(Booking& b) {
+void startMonitoring(Booking& b) {
     EventState e = convertBookingToEventState(b);
-    //PrintQuickNote funtional;
 
-    cout << "\n--- Monitoring Event: " << b.eventName << " ---\n";
-    cout << "1. Add Participant review\n";
-    cout << "2. Log Technical Problem\n";
-    cout << "Enter choice: ";
+    bool continueMonitoring = true;
 
-    int choice;
-    cin >> choice;
-    cin.ignore();
+    while (continueMonitoring) {
+        cout << "\n--- Monitoring Event: " << e.booking.eventName << " ---\n";
+        cout << "1. Add Participant review\n";
+        cout << "2. Log Technical Problem\n";
+        cout << "3. Generate Report and Exiting\n";
+        cout << "Enter choice: ";
 
+        string input;
+        getline(cin, input);
 
-    switch (choice) {
-    case 1:
-        if (e.review.empty()) {
-            Review r = createComment(e);
-            e.review.push_back(r);
+        if (input.empty()) {
+            cout << "Error: Please enter a number." << endl;
+            continue;
         }
-        break;
 
-    case 2:
-        string note, title, ratingInput;
-        int rating = -1;
-
-        cout << "Enter Problem details: ";
-        getline(cin, note);
-
-        cout << "Enter the Title (Food/Technical Problem/Other): ";
-        getline(cin, title);
-
-        cout << "Rate the severity (1 = minor, 10 = critical): ";
-        getline(cin, ratingInput);
-
-        int severity = getValidRating(1, 10);
-
-        for (int i = 0; i < 50; i++) {
-            if (e.quickNote[ORG_PROBLEM][i].empty()) {
-                e.quickNote[ORG_PROBLEM][i] = note;
-                e.quickNote[PROBLEM_TITLE][i] = title;
-                e.quickNote[PROBLEM_RATING][i] = to_string(severity);
+        bool isAllDigits = true;
+        for (char ch : input) {
+            if (!isdigit(static_cast<unsigned char>(ch))) {
+                isAllDigits = false;
                 break;
-            }
+            }   
         }
-        printQuickNotes(e);
-        break;
-    default:
-        cout << "Invalid option.\n";
+
+        if (!isAllDigits) {
+            cout << "Error: Please enter only numbers (1-3)." << endl;
+            continue;
+        }
+
+        int choice = 0;
+        try {
+            choice = stoi(input);
+        }
+        catch (...) {
+            cout << "Error: Invalid number." << endl;
+            continue;
+        }
+
+        if (choice < 1 || choice > 3) {
+            cout << "Error: Please enter 1-3 only." << endl;
+            continue;
+        }
+
+        switch (choice) {
+        case 1:
+            if (e.review.empty()) {
+                Review r = createComment(e);
+                e.review.push_back(r);
+            }
+            break;
+
+        case 2:
+            string note, title, ratingInput;
+            int rating = -1;
+
+            cout << "Enter Problem details: ";
+            getline(cin, note);
+
+            cout << "Enter the Title (Food/Technical Problem/Other): ";
+            getline(cin, title);
+
+            cout << "Rate the severity (1 = minor, 10 = critical): ";
+            getline(cin, ratingInput);
+
+            int severity = getValidRating(1, 10);
+
+            for (int i = 0; i < 50; i++) {
+                if (e.quickNote[ORG_PROBLEM][i].empty()) {
+                    e.quickNote[ORG_PROBLEM][i] = note;
+                    e.quickNote[PROBLEM_TITLE][i] = title;
+                    e.quickNote[PROBLEM_RATING][i] = to_string(severity);
+                    break;
+                }
+            }
+            system("cls");
+            printQuickNotes(e);
+            break;
+        case 3:
+
+            generateReport(e);
+            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+            readReport(filename);
+
+            continueMonitoring = false;
+            break;
+        default:
+            cout << "Invalid option.\n";
+        }
     }
+    showMainMenu(b);
+    
 }
 
 
@@ -1774,7 +1818,7 @@ Review createComment(EventState& e) {
 
 int getValidRating(int min, int max) {
     string input;
-    rating = -1;
+    int rating = -1;
     bool validRating = false;
 
     cout << "May you giving us a good rating?" << endl;
@@ -1814,8 +1858,119 @@ int getValidRating(int min, int max) {
     return rating;
 }
 
+void generateReport(EventState e) {
+    e.booking.status = "finished";
+
+    string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+
+    ofstream outFile(filename);
+    if (!outFile) {
+        cerr << "Error creating report file: " << filename << endl;
+        return;
+    }
+
+    auto printLine = [&](ostream& os, char c = '=', int n = 60) {
+        os << string(n, c) << "\n";
+        };
 
 
+    auto writeBoth = [&](const string& line) {
+        cout << line << endl;
+        outFile << line << "\n";
+        };
+
+    //Header
+    printLine(cout); printLine(outFile);
+    writeBoth("           EVENT REPORT");
+    printLine(cout); printLine(outFile);
+
+    //Event Info
+    writeBoth("Event ID     : " + to_string(e.booking.eventId));
+    writeBoth("Name         : " + e.booking.eventName);
+    writeBoth("Type         : " + e.booking.eventType);
+    writeBoth("Venue        : " + e.booking.venue);
+    writeBoth("Date & Time  : " + e.booking.dateTime);
+    writeBoth("Deadline     : " + e.booking.deadline);
+    writeBoth("Status       : " + e.booking.status);
+    writeBoth("Guest Limit  : " + to_string(e.booking.guestCount));
+    writeBoth("Participants : " + to_string(e.booking.participants.size()) + "/" + to_string(e.booking.guestCount));
+    printLine(cout, '-'); printLine(outFile, '-');
+
+    //Participants
+    writeBoth("Participants:");
+    if (e.booking.participants.empty()) {
+        writeBoth("  (No participants)");
+    }
+    else {
+        for (const auto& p : e.booking.participants) {
+            writeBoth("  ID: " + to_string(p.id) + " | Name: " + p.name + " | Role: " + p.role);
+            writeBoth("     Amount Due: " + to_string(p.amountDue) +
+                " | Paid: " + (p.paid ? "Yes" : "No") +
+                " | Method: " + p.paymentMethod +
+                " | Date: " + p.paymentDate);
+        }
+    }
+    printLine(cout, '-'); printLine(outFile, '-');
+
+    //Reviews
+    writeBoth("Reviews:");
+    if (e.review.empty()) {
+        writeBoth("  (No reviews submitted)");
+    }
+    else {
+        for (const auto& r : e.review) {
+            writeBoth("  Reviewer: " + r.name);
+            writeBoth("  Title   : " + r.title);
+            writeBoth("  Comment : " + r.comment);
+            writeBoth("  Rating  : " + to_string(r.rating) + "/5");
+            writeBoth(string(30, '-'));
+        }
+    }
+    printLine(cout, '-'); printLine(outFile, '-');
+
+    //Problems / Quick Notes
+    writeBoth("Logged Problems:");
+    bool hasProblems = false;
+    for (int i = 0; i < 50; i++) {
+        if (!e.quickNote[ORG_PROBLEM][i].empty()) {
+            hasProblems = true;
+            writeBoth("  Title : " + e.quickNote[PROBLEM_TITLE][i]);
+            writeBoth("  Detail: " + e.quickNote[ORG_PROBLEM][i]);
+            writeBoth("  Rating: " + e.quickNote[PROBLEM_RATING][i] + "/10");
+            writeBoth(string(30, '-'));
+        }
+    }
+    if (!hasProblems) {
+        writeBoth("  (No problems logged)");
+    }
+    printLine(cout); printLine(outFile);
+
+    outFile.close();
+    cout << "\nReport successfully saved to: " << filename << endl;
+}
+
+void readReport(const string& filename) {
+    ifstream inFile(filename);
+    if (!inFile) {
+        cerr << "Error opening report file: " << filename << endl;
+        return;
+    }
+
+    cout << "\n" << string(60, '=') << endl;
+    cout << "           READING EVENT REPORT" << endl;
+    cout << string(60, '=') << endl;
+
+    string line;
+    while (getline(inFile, line)) {
+        cout << line << endl;
+    }
+
+    cout << string(60, '=') << endl;
+    cout << "       END OF REPORT (" << filename << ")" << endl;
+    cout << string(60, '=') << endl;
+
+    inFile.close();
+}
 int main() {
     vector<Booking> bookings;
     loadBookings(bookings, "bookings.txt");
