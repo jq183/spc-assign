@@ -78,7 +78,6 @@ void showMainMenu(vector<Booking>& bookings);
 string getValidInput(const string& title);
 string getValidDateTime(const string& title);
 string getValidDateline(const string& title);
-char getValidYesNoChoice();
 string getValidCreditCardNumber();
 string getValidExpiryDate();
 string getValidCVV();
@@ -88,6 +87,7 @@ string getValidEmail();
 string getValidName();
 string getValidPaymentMethod();
 double getValidAmount();
+char getValidYesNoChoice();
 int getValidRoleChoice();
 int getValidRating(int min, int max);
 
@@ -1777,7 +1777,6 @@ void startMonitor(Booking& b) {
         cout << "Invalid option.\n";
     }
 }
-
 
 Review createComment(EventState& e) {
     Review r;
