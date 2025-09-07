@@ -65,6 +65,28 @@ struct Review
     int rating;
 };
 
+struct PersonalInfo {
+    string fullName;
+    string email;
+    string phone;
+};
+
+struct UserProfile {
+    string username;
+    string password;
+    string secQ;
+    string secA;
+    string role;
+    PersonalInfo info;
+};
+
+struct EventAd {
+    string eventTitle;
+    string marketingText;
+    string startDate;
+    string endDate;
+    string status;
+};
 
 //Please sort your functions into modules here to easily know
 
@@ -112,8 +134,37 @@ void destroyEvent(vector<Booking>& bookings, int eventId, const string& bookFile
 //Reminder
 
 //Marketing
+string computeStatus(string startDate, string endDate);
+bool isValidDate(const string& date);
+void loadAds(vector<EventAd>& ads);
+void saveAds(vector<EventAd>& ads);
+void createAd(vector<EventAd>& ads);
+void displayAds(vector<EventAd>& ads);
+void showAllAds(vector<EventAd>& ads);
+void deleteAd(vector<EventAd>& ads);
+void marketingModule(vector<EventAd>& ads);
 
 //User/Login
+string normalize(string s);
+bool usernameExists(vector<UserProfile>& users, string uname);
+bool isStrongPassword(string pwd);
+bool isValidEmail(string email);
+bool isValidPhone(string phone);
+void saveUsers(vector<UserProfile>& users);
+void loadUsers(vector<UserProfile>& users);
+UserProfile* login(vector<UserProfile>& users, string uname, string pwd);
+void regAccount(vector<UserProfile>& users);
+void forgotPwd(vector<UserProfile>& users, string uname);
+void changePwd(UserProfile& user);
+void updateInfo(UserProfile& user);
+void deleteAccount(vector<UserProfile>& users, UserProfile*& user);
+void createDefaultOrg(vector<UserProfile>& users);
+void showAllU(const vector<UserProfile>& users);
+void orgDeleteU(vector<UserProfile>& users);
+void orgUpdateU(vector<UserProfile>& users);
+void manageUsers(vector<UserProfile>& users);
+void loginModule(vector<UserProfile>& users);
+
 //Monitor
 Review createComment(EventState& e);
 void startMonitor(Booking& b);
@@ -1603,6 +1654,701 @@ void showMainMenu(vector<Booking>& bookings) {
     }
 }
 
+//Marketing
+string computeStatus(string startDate, string endDate) {
+    time_t now = time(0);
+    tm ltm;
+    localtime_s(&ltm, &now);
+
+    // Build current date as YYYY-MM-DD
+    char buffer[11];
+    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", 1900 + ltm.tm_year, 1 + ltm.tm_mon, ltm.tm_mday);
+    string today = buffer;
+
+    if (today < startDate) return "Upcoming";
+    else if (today >= startDate && today <= endDate) return "Active";
+    else return "Expired";
+}
+
+bool isValidDate(const string& date) {
+    regex pattern(R"(^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$)");
+    return regex_match(date, pattern);
+}
+
+void loadAds(vector<EventAd>& ads) {
+    ifstream fin("ads.txt");
+    string line;
+
+    while (getline(fin, line)) {
+        EventAd ad;
+        size_t pos = 0, prev = 0;
+        vector<string> parts;
+
+        while ((pos = line.find('|', prev)) != string::npos) {
+            parts.push_back(line.substr(prev, pos - prev));
+            prev = pos + 1;
+        }
+        parts.push_back(line.substr(prev));
+
+        if (parts.size() == 4) {
+            ad.eventTitle = parts[0];
+            ad.marketingText = parts[1];
+            ad.startDate = parts[2];
+            ad.endDate = parts[3];
+            ad.status = computeStatus(ad.startDate, ad.endDate);
+
+            ads.push_back(ad);
+        }
+    }
+    fin.close();
+}
+
+void saveAds(vector<EventAd>& ads) {
+    ofstream fout("ads.txt");
+    for (auto& ad : ads) {
+        fout << ad.eventTitle << "|" << ad.marketingText << "|"
+            << ad.startDate << "|" << ad.endDate << endl;
+    }
+    fout.close();
+}
+
+void createAd(vector<EventAd>& ads) {
+    EventAd ad;
+    cout << "Enter Event Title: ";
+    getline(cin, ad.eventTitle);
+
+    cout << "Enter Marketing Text: ";
+    getline(cin, ad.marketingText);
+
+    do {
+        cout << "Enter Start Date (YYYY-MM-DD): ";
+        getline(cin, ad.startDate);
+        if (!isValidDate(ad.startDate)) {
+            cout << "Invalid date format! Please enter again.\n";
+        }
+    } while (!isValidDate(ad.startDate));
+
+    do {
+        cout << "Enter End Date (YYYY-MM-DD): ";
+        getline(cin, ad.endDate);
+        if (!isValidDate(ad.endDate)) {
+            cout << "Invalid date format! Please enter again.\n";
+        }
+    } while (!isValidDate(ad.endDate));
+
+    ad.status = computeStatus(ad.startDate, ad.endDate);
+    ads.push_back(ad);
+
+    saveAds(ads);
+    cout << "Advertisement created successfully!\n";
+}
+
+// active advertisements
+void displayAds(vector<EventAd>& ads) {
+    cout << "\n\t\t\t=== Current Event Advertisements ===\n\n";
+    cout << left << setw(15) << "Event" << setw(30)
+        << "Message" << setw(12) << "Start Date"
+        << setw(12) << "End Date" << setw(10) << "Status" << endl;
+    cout << string(80, '-') << endl;
+
+    for (auto& ad : ads) {
+        if (ad.status == "Active") {
+            cout << left << setw(15) << ad.eventTitle
+                << setw(30) << ad.marketingText
+                << setw(12) << ad.startDate
+                << setw(12) << ad.endDate
+                << setw(10) << ad.status << endl;
+        }
+    }
+}
+
+// all advertisements
+void showAllAds(vector<EventAd>& ads) {
+    cout << "\n\t\t\t=== All Event Advertisements ===\n\n";
+    cout << left << setw(15) << "Event" << setw(30)
+        << "Message" << setw(12) << "Start Date"
+        << setw(12) << "End Date" << setw(10) << "Status" << endl;
+    cout << string(80, '-') << endl;
+
+    for (auto& ad : ads) {
+        cout << left << setw(15) << ad.eventTitle
+            << setw(30) << ad.marketingText
+            << setw(12) << ad.startDate
+            << setw(12) << ad.endDate
+            << setw(10) << ad.status << endl;
+    }
+}
+
+void deleteAd(vector<EventAd>& ads) {
+    if (ads.empty()) {
+        cout << "No advertisements available to delete.\n";
+        return;
+    }
+
+    cout << "\n=== Delete Advertisement ===\n";
+    for (size_t i = 0; i < ads.size(); i++) {
+        cout << i + 1 << ". " << ads[i].eventTitle
+            << " (" << ads[i].startDate << " to " << ads[i].endDate << ")\n";
+    }
+
+    string input;
+    int choice = 0;
+    regex numRegex(R"(^\d+$)");
+
+    do {
+        cout << "Enter the number of the advertisement to delete: ";
+        getline(cin, input);
+
+        if (!regex_match(input, numRegex)) {
+            cout << "Invalid input! Please enter a number.\n";
+            continue;
+        }
+
+        stringstream ss(input);
+        ss >> choice;
+
+        if (choice < 1 || choice >(int)ads.size()) {
+            cout << "Invalid choice. Enter a number between 1 and " << ads.size() << ".\n";
+            choice = 0;
+        }
+
+    } while (choice == 0);
+
+    ads.erase(ads.begin() + (choice - 1));
+    saveAds(ads);
+
+    cout << "Advertisement deleted successfully!\n";
+}
+
+void marketingModule(vector<EventAd>& ads) {
+    int choice;
+    do {
+        cout << "\n\n=== Marketing Module ===\n";
+        cout << "1. Create Advertisement\n";
+        cout << "2. Show All Advertisement\n";
+        cout << "3. Delete Advertisement\n";
+        cout << "4. Exit to Main Menu\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+        case 1:
+            createAd(ads);
+            break;
+
+        case 2:
+            showAllAds(ads);
+            break;
+
+        case 3:
+            deleteAd(ads);
+            break;
+
+        case 4:
+            cout << "Returning to Main Menu...\n";
+            break;
+
+        default:
+            cout << "Invalid choice!\n";
+        }
+    } while (choice != 4);
+}
+
+
+//User/Login
+string normalize(string s) {
+    string result;
+    for (char c : s) {
+        if (c != ' ') result += tolower(c);
+    }
+    return result;
+}
+
+bool usernameExists(vector<UserProfile>& users, string uname) {
+    for (auto& u : users) {
+        if (u.username == uname)
+            return true;
+    }
+    return false;
+}
+
+// check password strength
+bool isStrongPassword(string pwd) {
+    regex pattern("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{6,}$");
+    return regex_match(pwd, pattern);
+}
+
+bool isValidEmail(string email) {
+    regex pattern("^[a-zA-Z0-9._%+-]+@gmail\\.com$");
+    return regex_match(email, pattern);
+}
+
+bool isValidPhone(string phone) {
+    regex pattern("^\\+?[0-9]{1,3}[ ]?[0-9]{2,4}-?[0-9]{6,8}$");
+    return regex_match(phone, pattern);
+}
+
+void saveUsers(vector<UserProfile>& users) {
+    ofstream fout("users.txt");
+    for (auto& u : users) {
+        fout << u.username << "|" 
+            << u.password << "|" 
+            << u.secQ << "|" 
+            << u.secA << "|" 
+            << u.role << "|" 
+            << u.info.fullName 
+            << "|" << u.info.email 
+            << "|" << u.info.phone 
+            << endl;
+    }
+    fout.close();
+}
+
+void loadUsers(vector<UserProfile>& users) {
+    ifstream fin("users.txt");
+    string line;
+    while (getline(fin, line)) {
+        UserProfile u;
+        size_t pos = 0, prev = 0;
+        vector<string> parts;
+        while ((pos = line.find('|', prev)) != string::npos) {
+            parts.push_back(line.substr(prev, pos - prev));
+            prev = pos + 1;
+        }
+        parts.push_back(line.substr(prev));
+
+        if (parts.size() == 8) {
+            u.username = parts[0];
+            u.password = parts[1];
+            u.secQ = parts[2];
+            u.secA = parts[3];
+            u.role = parts[4];
+            u.info.fullName = parts[5];
+            u.info.email = parts[6];
+            u.info.phone = parts[7];
+            users.push_back(u);
+        }
+    }
+    fin.close();
+}
+
+UserProfile* login(vector<UserProfile>& users, string uname, string pwd) {
+    for (auto& u : users) {
+        if (u.username == uname) {
+            while (u.password != pwd) {
+                cout << "Incorrect password. Please try again: ";
+                getline(cin, pwd);
+            }
+            return &u;
+        }
+    }
+    cout << "Username not found.\n";
+    return nullptr;
+}
+
+
+void regAccount(vector<UserProfile>& users) {
+    UserProfile u;
+
+    cout << "Enter username: ";
+    getline(cin, u.username);
+
+    while (usernameExists(users, u.username)) {
+        cout << "Username already exist, please re-enter: ";
+        getline(cin, u.username);
+    }
+
+    do {
+        cout << "Enter password (at least 6 chars, must include digit, uppercase, lowercase): ";
+        getline(cin, u.password);
+    } while (!isStrongPassword(u.password));
+
+    cout << "\nSelect Security Question\n";
+    cout << "1. What is your pet's name?\n";
+    cout << "2. What is your favorite color?\n";
+    cout << "3. What city were you born in?\n";
+    cout << "Your choice: ";
+
+    int qChoice;
+
+    cin >> qChoice;
+    cin.ignore();
+
+    switch (qChoice) {
+    case 1:
+        u.secQ = "What is your pet's name?";
+        break;
+
+    case 2:
+        u.secQ = "What is your favorite color?";
+        break;
+
+    case 3:
+        u.secQ = "What city were you born in?";
+        break;
+
+    default:
+        u.secQ = "What is your pet's name? ";
+        break;
+    }
+
+    cout << "Enter your answer: ";
+    getline(cin, u.secA);
+
+    cout << "Enter your full name: ";
+    getline(cin, u.info.fullName);
+
+    do {
+        cout << "Enter email: ";
+        getline(cin, u.info.email);
+    } while (!isValidEmail(u.info.email));
+
+    do {
+        cout << "Enter phone number: ";
+        getline(cin, u.info.phone);
+    } while (!isValidPhone(u.info.phone));
+
+    u.role = "user";
+    users.push_back(u);
+    cout << "\nAccount created successfully!\n";
+
+    saveUsers(users);
+}
+
+//u forgot password
+void forgotPwd(vector<UserProfile>& users, string uname) {
+    for (auto& u : users) {
+        if (u.username == uname) {
+            cout << "Security Questions: " << u.secQ << endl;
+            cout << "Answer: ";
+            string ans;
+            getline(cin, ans);
+
+            if (normalize(ans) == normalize(u.secA)) {
+                string newPwd;
+                do {
+                    cout << "Enter new password (must include digit, uppercase, lowercase, at least 6 chars): ";
+                    getline(cin, newPwd);
+                    if (!isStrongPassword(newPwd)) {
+                        cout << "New password is not strong enough. Please try again.\n";
+                    }
+                } while (!isStrongPassword(newPwd));
+
+                u.password = newPwd;
+                cout << "Password reset successfully.\n";
+            }
+            else {
+                cout << "Incorrect answer.";
+            }
+            return;
+        }
+    }
+    cout << "Username not found.\n";
+}
+
+//u changed password
+void changePwd(UserProfile& user) {
+    cout << "Enter current password: ";
+    string current;
+    getline(cin, current);
+
+    if (current == user.password) {
+        string newPwd;
+        do {
+            cout << "Enter new password (must include digit, uppercase, lowercase, min 6 chars): ";
+            getline(cin, newPwd);
+
+            if (!isStrongPassword(newPwd)) {
+                cout << "Password too weak. Please try again.\n";
+            }
+        } while (!isStrongPassword(newPwd));
+
+        user.password = newPwd;
+        cout << "Password changed successfully.\n";
+    }
+    else {
+        cout << "Incorrect current password.\n";
+    }
+}
+
+//u update info
+void updateInfo(UserProfile& user) {
+    cout << "Update full name: ";
+    getline(cin, user.info.fullName);
+
+    do {
+        cout << "Update email: ";
+        getline(cin, user.info.email);
+    } while (!isValidEmail(user.info.email));
+
+    cout << "Update phone: ";
+    getline(cin, user.info.phone);
+
+    cout << "Personal info updated successfully!\n";
+}
+
+//u delete acc
+void deleteAccount(vector<UserProfile>& users, UserProfile*& user) {
+    cout << "Are you sure you want to delete your account? (Y/N): ";
+    char confirm;
+    cin >> confirm;
+    cin.ignore();
+
+    if (toupper(confirm) == 'Y') {
+        for (auto it = users.begin(); it != users.end(); ++it) {
+            if (it->username == user->username) {
+                users.erase(it);
+                cout << "Account deleted successfully!\n";
+                user = nullptr;
+                saveUsers(users);
+                return;
+            }
+        }
+    }
+    else {
+        cout << "Account deletion cancelled.\n";
+    }
+}
+
+
+void createDefaultOrg(vector<UserProfile>& users) {
+    if (!usernameExists(users, "organizer")) {
+        UserProfile org;
+        org.username = "organizer";
+        org.password = "Admin123"; //default pwd
+        org.secQ = "Default";
+        org.secA = "Default";
+        org.role = "organizer";
+        org.info.fullName = "System Organizer";
+        org.info.email = "organizer@gmail.com";
+        org.info.phone = "+60123456789";
+        users.push_back(org);
+        saveUsers(users);
+    }
+}
+
+//name list for org
+void showAllU(const vector<UserProfile>& users) {
+    cout << "\n\t\t=== Registered Users ===\n";
+    cout << left << setw(15) << "Username"
+        << setw(25) << "Full Name"
+        << setw(25) << "Email"
+        << setw(15) << "Phone"
+        << setw(10) << "Role" << endl;
+    cout << string(90, '-') << endl;
+
+    for (auto& u : users) {
+        if (u.role != "organizer") { // hide org acc
+            cout << left << setw(15) << u.username
+                << setw(25) << u.info.fullName
+                << setw(25) << u.info.email
+                << setw(15) << u.info.phone
+                << setw(10) << u.role << endl;
+        }
+    }
+}
+
+// delete u by username
+void orgDeleteU(vector<UserProfile>& users) {
+    string uname;
+    cout << "Enter the username to delete: ";
+    getline(cin, uname);
+
+    for (auto it = users.begin(); it != users.end(); ++it) {
+        if (it->username == uname && it->role != "organizer") {
+            users.erase(it);
+            cout << "User " << uname << " deleted successfully.\n";
+            saveUsers(users);
+            return;
+        }
+    }
+    cout << "User not found.\n";
+}
+
+// org update u info
+void orgUpdateU(vector<UserProfile>& users) {
+    string uname;
+    cout << "Enter the username to update: ";
+    getline(cin, uname);
+
+    for (auto& u : users) {
+        if (u.username == uname && u.role != "organizer") {
+            cout << "Update full name: ";
+            getline(cin, u.info.fullName);
+
+            do {
+                cout << "Update email: ";
+                getline(cin, u.info.email);
+            } while (!isValidEmail(u.info.email));
+
+            cout << "Update phone: ";
+            getline(cin, u.info.phone);
+
+            cout << "User info updated successfully!\n";
+            saveUsers(users);
+            return;
+        }
+    }
+    cout << "User not found.\n";
+}
+
+
+
+void manageUsers(vector<UserProfile>& users) {
+    int choice;
+    do {
+        cout << "\n=== Manage Users (Organizer) ===\n";
+        cout << "1. Show All Users\n";
+        cout << "2. Delete a User\n";
+        cout << "3. Update a User's Info\n";
+        cout << "4. Back\n";
+        cout << "Choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+        case 1:
+            showAllU(users);
+            break;
+
+        case 2:
+            orgDeleteU(users);
+            break;
+
+        case 3:
+            orgUpdateU(users);
+            break;
+
+        case 4:
+            cout << "Returning to Organizer Menu...\n";
+            break;
+
+        default:
+            cout << "Invalid choice.";
+        }
+
+    } while (choice != 4);
+}
+
+void loginModule(vector<UserProfile>& users) {
+    int choice;
+
+    do {
+        cout << "\n=== User/Organizer Login ===\n";
+        cout << "1. Register Account\n";
+        cout << "2. Login\n";
+        cout << "3. Forgot Password\n";
+        cout << "4. Exit to Main Menu\n";
+        cout << "Choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        if (choice == 1) {
+            regAccount(users);
+        }
+        else if (choice == 2) {
+            string uname, pwd;
+            cout << "Username: ";
+            getline(cin, uname);
+            cout << "Password: ";
+            getline(cin, pwd);
+
+            UserProfile* user = login(users, uname, pwd);
+            if (user) {
+                cout << "Login successful! Welcome " << user->info.fullName << "\n";
+
+                if (user->role == "organizer") {
+                    // org menu
+                    int orgChoice;
+                    do {
+                        cout << "\n=== Organizer Menu ===\n";
+                        cout << "1. Manage Users\n";
+                        cout << "2. Event Monitoring\n";
+                        cout << "3. Booking Management\n";
+                        cout << "4. Marketing Management\n";
+                        cout << "5. Registration\n";
+                        cout << "6. Reporting\n";
+                        cout << "7. Logout\n";
+                        cout << "Choice: ";
+                        cin >> orgChoice;
+                        cin.ignore();
+
+                        switch (orgChoice) {
+                        case 1:
+                            manageUsers(users);
+                            break;
+
+                        case 2:
+                            //monitoring
+                            break;
+
+                        case 3:
+                            //booking
+                            break;
+
+                        case 4:
+                            marketingModule(ads);
+                            break;
+
+                        case 5:
+                            //registration
+                            break;
+
+                        case 6:
+                            //reporting
+                            break;
+
+                        case 7:
+                            cout << "Logging out...\n";
+                            break;
+
+                        default: cout << "Invalid choice.\n";
+                        }
+
+                    } while (orgChoice != 7);
+                }
+                else {
+                    //u menu
+                    int subChoice;
+                    do {
+                        cout << "\n--- Account Menu ---\n";
+                        cout << "1. Change Password\n";
+                        cout << "2. Update Personal Info\n";
+                        cout << "3. Delete Account\n";
+                        cout << "4. Logout\n";
+                        cout << "Choice: ";
+                        cin >> subChoice;
+                        cin.ignore();
+
+                        if (subChoice == 1) {
+                            changePwd(*user);
+                        }
+                        else if (subChoice == 2) {
+                            updateInfo(*user);
+                        }
+                        else if (subChoice == 3) {
+                            deleteAccount(users, user);
+                            break;
+                        }
+
+                    } while (subChoice != 4 && user != nullptr);
+                }
+            }
+            else {
+                cout << "Invalid username or password.\n";
+            }
+        }
+        else if (choice == 3) {
+            string uname;
+            cout << "Enter your username: ";
+            getline(cin, uname);
+            forgotPwd(users, uname);
+        }
+
+    } while (choice != 4);
+}
+
 void monitorEvent(vector<Booking>& bookings) {
     cout << "\n" << string(60, '=') << endl;
     cout << "         EVENT MONITOR" << endl;
@@ -1972,11 +2718,24 @@ void readReport(const string& filename) {
     inFile.close();
 }
 int main() {
+
+    vector<UserProfile> users;
+    loadUsers(users);
+    createDefaultOrg(users);
+    loginModule(users);
+    saveUsers(users);
+
     vector<Booking> bookings;
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
     checkDeadlines(bookings);
     showMainMenu(bookings);
+    
+    vector<EventAd> ads;
+    loadAds(ads);
+    marketingModule(ads);
+    saveAds(ads);
 
+    return 0;
 }
 
