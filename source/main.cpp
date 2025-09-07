@@ -29,13 +29,14 @@ Report Module-Complete
 
 struct Participant
 {
-    int id;
+    string id;
     string name;
     string role;
     double amountDue;
     bool paid;
     string paymentMethod;
     string paymentDate;
+    string email;
 };
 
 struct Booking
@@ -49,12 +50,7 @@ struct Booking
     vector<Participant> participants;
     int guestCount;
     int eventId;
-};
-
-struct EventState {
-    Booking booking;
-    string quickNote[3][50]; // [type][index]
-    vector<Review> review;
+    string organizerName;
 };
 
 struct Review
@@ -64,6 +60,14 @@ struct Review
     string comment;
     int rating;
 };
+
+struct EventState {
+    Booking booking;
+    string quickNote[3][50]; // [type][index]
+    vector<Review> review;
+};
+
+
 
 struct PersonalInfo {
     string fullName;
@@ -108,21 +112,26 @@ int getValidRoleChoice();
 int getValidRating(int min, int max);
 
 //Payment
-void proceedPayment(Participant& participant, vector<Booking>& bookings);
-void processAllPayments(vector<Participant>& participants, vector<Booking>& bookings);
+void userProcessPayment(vector<Booking>& bookings, const string& organizerName);
 void displayPaymentSummary(const vector<Participant>& participants);
 void showPaymentMenu(vector<Participant>& participants, vector<Booking>& bookings);
-void processSinglePayment(vector<Participant>& participants, vector<Booking>& bookings);
-void showPaymentMenuForEvents(vector<Booking>& bookings);
-void generatePaymentReceipt(const Participant& participant, double amountDue, const string& paymentMethod);
+void generatePaymentReceipt(const Participant& participant, double amountDue, const string& paymentMethod, const string& userEmail, const Booking& eventInfo);vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName);
+void viewAllPaymentsSummary(vector <Booking>& bookings,const string&organizerName );
+void organizerPaymentMenu(vector<Booking>& bookings,const string& organizerName);
+void userViewandMakePayment(vector<Booking>& bookings, const string& organizerName);
+void processAllPayments(vector<Booking>& bookings, const string& organizerName);
+string getCurrentDate();
 
 //Registration
-void addParticipants(vector<Participant>& participants, vector<Booking>& bookings);
-void addParticipantsToEvent(vector<Booking>& bookings);
-void viewParticipants(const vector<Booking>& bookings);
+void registrationMenu(vector<Booking>& bookings);
+void addParticipants(vector<Booking>& bookings,const string& organizerName);
+void viewParticipants(const vector<Booking>& bookings,const string&organizerName);
+void userJoinEvent(vector<Booking>& bookings, const string& organizerName);
+void viewJoinedEvents(const vector<Booking>& bookings, const string& organizerName);
+void JoinedEventMenu(vector<Booking>& bookings, const string& organizerName);
 
 //Booking
-Booking createBooking(int id, vector<Booking>& bookings);
+Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName);
 time_t deadline(const string& deadline);
 void saveBookings(vector<Booking>& bookings, const string& file);
 void saveParticipants(vector<Booking>& bookings, const string& file);
@@ -163,7 +172,7 @@ void showAllU(const vector<UserProfile>& users);
 void orgDeleteU(vector<UserProfile>& users);
 void orgUpdateU(vector<UserProfile>& users);
 void manageUsers(vector<UserProfile>& users);
-void loginModule(vector<UserProfile>& users);
+void loginModule(vector<UserProfile>& users,vector<EventAd>&ads,vector<Booking>&b);
 
 //Monitor
 Review createComment(EventState& e);
@@ -174,9 +183,8 @@ void monitorEvent(vector<Booking>& bookings);
 
 //Reporting
 void generateReport(EventState e);
-void readReport(const string& filename)
+void readReport(const string& filename);
 
-void showMainMenu(vector<Booking>& bookings);
 
 string getValidName() {
     string name;
@@ -275,7 +283,6 @@ string getValidCreditCardNumber() {
             continue;
         }
 
-        // Remove spaces and dashes
         string cleanNumber;
         for (char c : cardNumber) {
             if (isdigit(c)) {
@@ -432,64 +439,79 @@ string getValidBankName() {
     } while (!isValid);
     return bankName;
 }
-
-void addParticipants(vector<Participant>& participants, vector<Booking>& bookings) {
-    char choice;
-
-    do {
-        Participant ptcp;
-
-        cout << "Add New Participant" << endl;
-        cout << "--------------------" << endl;
-        cout << "Enter participant name: ";
-        ptcp.name = getValidName();
-
-        int roleChoice = getValidRoleChoice();
-        ptcp.role = (roleChoice == 1) ? "Host/Vendor" : "Customer";
-
-        ptcp.id = static_cast<int>(participants.size()) + 1;
-
-        participants.push_back(ptcp);
-
-        proceedPayment(ptcp, bookings);
-
-        cout << "Continue? (y/n): ";
-
-        choice = getValidYesNoChoice();
-
-    } while (choice == 'y');
+string generateParticipantId(const Booking& event, const string& participantName, int participantCount) {
+    string eventPrefix = "";
+    for (int i = 0; i < min(3, (int)event.eventName.length()); i++) {
+        if (isalpha(event.eventName[i])) {
+            eventPrefix += toupper(event.eventName[i]);
+        }
+    }
 
 
+    string namePrefix = "";
+    for (int i = 0; i < min(3, (int)participantName.length()); i++) {
+        if (isalpha(participantName[i])) {
+            namePrefix += toupper(participantName[i]);
+        }
+    }
+
+    string participantId = eventPrefix + to_string(event.eventId) + namePrefix + to_string(participantCount + 1);
+
+    return participantId;
 }
 
-void addParticipantsToEvent(vector<Booking>& bookings) {
+string getCurrentDate() {
+    time_t now = time(0);
+    tm* ltm = localtime(&now);
+
+    char buffer[11];
+    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d",
+             1900 + ltm->tm_year, 1 + ltm->tm_mon, ltm->tm_mday);
+
+    return string(buffer);
+}
+
+void addParticipants(vector<Booking>& bookings, const string& organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           ADD PARTICIPANTS TO EVENT" << endl;
     cout << string(60, '=') << endl;
 
-    cout << "\nAvailable Events for Adding Participants:\n";
-    cout << string(60, '-') << endl;
+    vector<int> organizerEventIndices;
     for (size_t i = 0; i < bookings.size(); i++) {
+        if (bookings[i].organizerName == organizerName) {
+            organizerEventIndices.push_back(i);
+        }
+    }
+
+    if (organizerEventIndices.empty()) {
+        cout << "No events found for organizer: " << organizerName << endl;
+        return;
+    }
+
+    cout << "\nAvailable Events :\n";
+    cout << string(60, '-') << endl;
+    for (size_t i = 0; i < organizerEventIndices.size(); i++) {
+        int eventIndex = organizerEventIndices[i];
         cout << "Event " << (i + 1) << ":" << endl;
-        cout << "  Name: " << bookings[i].eventName << endl;
-        cout << "  Type: " << bookings[i].eventType << endl;
-        cout << "  Venue: " << bookings[i].venue << endl;
-        cout << "  Date & Time: " << bookings[i].dateTime << endl;
-        cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
+        cout << "  Name: " << bookings[eventIndex].eventName << endl;
+        cout << "  Type: " << bookings[eventIndex].eventType << endl;
+        cout << "  Venue: " << bookings[eventIndex].venue << endl;
+        cout << "  Date & Time: " << bookings[eventIndex].dateTime << endl;
+        cout << "  Current Participants: " << bookings[eventIndex].participants.size() << "/" << bookings[i].guestCount << endl;
         cout << string(60, '-') << endl;
     }
 
     int eventChoice;
     cout << "Select an event to add participants" << endl;
     cout << "--------------------------------" << endl;
-    cout << "Enter event number (1-" << bookings.size() << "): ";
+    cout << "Enter event number (1-" << organizerEventIndices.size() << "): ";
 
     string input;
     getline(cin, input);
 
     try {
         eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(bookings.size())) {
+        if (eventChoice < 1 || eventChoice > static_cast<int>(organizerEventIndices.size())) {
             cout << "\nError: Invalid event selection. Please enter a number between 1 and " << bookings.size() << "." << endl;
             return;
         }
@@ -499,7 +521,7 @@ void addParticipantsToEvent(vector<Booking>& bookings) {
         return;
     }
 
-    int selectedEventIndex = eventChoice - 1;
+    int selectedEventIndex = organizerEventIndices[eventChoice - 1];
     Booking& selectedEvent = bookings[selectedEventIndex];
 
     cout << "\n" << string(60, '=') << endl;
@@ -524,16 +546,9 @@ void addParticipantsToEvent(vector<Booking>& bookings) {
         cout << "Enter participant name: ";
         ptcp.name = getValidName();
 
-        int roleChoice = getValidRoleChoice();
-        ptcp.role = (roleChoice == 1) ? "Host/Vendor" : "Customer";
+        ptcp.role = "Customer";
 
-        int maxId = 0;
-        for (const auto& booking : bookings) {
-            for (const auto& participant : booking.participants) {
-                if (participant.id > maxId) maxId = participant.id;
-            }
-        }
-        ptcp.id = maxId + 1;
+        ptcp.id = generateParticipantId(selectedEvent,ptcp.name,selectedEvent.participants.size() );
 
         ptcp.amountDue = 50.0;
         ptcp.paid = false;
@@ -573,27 +588,129 @@ void addParticipantsToEvent(vector<Booking>& bookings) {
     }
 }
 
-void viewParticipants(const vector<Booking>& bookings) {
+void regAccount(vector<UserProfile>& users) {
+    UserProfile u;
+
+    cout << "Enter username: ";
+    getline(cin, u.username);
+
+    while (usernameExists(users, u.username)) {
+        cout << "Username already exist, please re-enter: ";
+        getline(cin, u.username);
+    }
+
+    do {
+        cout << "Enter password (at least 6 chars, must include digit, uppercase, lowercase): ";
+        getline(cin, u.password);
+    } while (!isStrongPassword(u.password));
+
+    cout << "\nSelect Security Question\n";
+    cout << "1. What is your pet's name?\n";
+    cout << "2. What is your favorite color?\n";
+    cout << "3. What city were you born in?\n";
+    cout << "Your choice: ";
+
+    int qChoice;
+    cin >> qChoice;
+    cin.ignore();
+
+    switch (qChoice) {
+    case 1:
+        u.secQ = "What is your pet's name?";
+        break;
+    case 2:
+        u.secQ = "What is your favorite color?";
+        break;
+    case 3:
+        u.secQ = "What city were you born in?";
+        break;
+    default:
+        u.secQ = "What is your pet's name?";
+        break;
+    }
+
+    cout << "Enter your answer: ";
+    getline(cin, u.secA);
+
+    cout << "Enter your full name: ";
+    getline(cin, u.info.fullName);
+
+    do {
+        cout << "Enter email: ";
+        getline(cin, u.info.email);
+    } while (!isValidEmail(u.info.email));
+
+    do {
+        cout << "Enter phone number: ";
+        getline(cin, u.info.phone);
+    } while (!isValidPhone(u.info.phone));
+
+    cout << "\nSelect account type:\n";
+    cout << "1. User (Event Participant)\n";
+    cout << "2. Organizer (Event Management)\n";
+    cout << "Enter choice (1-2): ";
+
+    int roleChoice;
+    string input;
+    do {
+        getline(cin, input);
+        if (input.empty()) {
+            cout << "Error: Please enter a number." << endl;
+            continue;
+        }
+
+        bool isValidNumber = true;
+        for (char c : input) {
+            if (!isdigit(c)) {
+                isValidNumber = false;
+                break;
+            }
+        }
+
+        if (!isValidNumber) {
+            cout << "Error: Please enter only numbers (1-2)." << endl;
+            continue;
+        }
+
+        roleChoice = stoi(input);
+        if (roleChoice == 1 || roleChoice == 2) {
+            break;
+        } else {
+            cout << "Error: Please enter 1 or 2 only." << endl;
+        }
+    } while (true);
+
+    u.role = (roleChoice == 1) ? "user" : "organizer";
+    users.push_back(u);
+    cout << "\nAccount created successfully as " << u.role << "!\n";
+    saveUsers(users);
+}
+
+void viewParticipants(const vector<Booking>& bookings,const string&organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           VIEW PARTICIPANTS" << endl;
     cout << string(60, '=') << endl;
 
     cout << "\nAvailable Events to View Participants:\n";
     cout << string(60, '-') << endl;
+    int count = 0;
     for (size_t i = 0; i < bookings.size(); i++) {
-        cout << "Event " << (i + 1) << ":" << endl;
-        cout << "  Name: " << bookings[i].eventName << endl;
-        cout << "  Type: " << bookings[i].eventType << endl;
-        cout << "  Venue: " << bookings[i].venue << endl;
-        cout << "  Date & Time: " << bookings[i].dateTime << endl;
-        cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
-        cout << string(60, '-') << endl;
+        if (bookings[i].organizerName == organizerName) {
+            count++;
+            cout << "Event " << (i + 1) << ":" << endl;
+            cout << "  Name: " << bookings[i].eventName << endl;
+            cout << "  Type: " << bookings[i].eventType << endl;
+            cout << "  Venue: " << bookings[i].venue << endl;
+            cout << "  Date & Time: " << bookings[i].dateTime << endl;
+            cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
+            cout << string(60, '-') << endl;
+        }
     }
 
     int eventChoice;
     cout << "Select an event to view participants" << endl;
     cout << "--------------------------------" << endl;
-    cout << "Enter event number (1-" << bookings.size() << "): ";
+    cout << "Enter event number (1-" << count << "): ";
     string input;
     getline(cin, input);
 
@@ -729,21 +846,414 @@ double getValidAmount() {
     return 0.0;
 }
 
-void proceedPayment(Participant& participant, vector<Booking>& bookings) {
+void userProcessPayment(Participant& participant,const Booking& selectedEvent) {
     if (participant.paid) {
-        cout << "Participant " << participant.name << " has already paid." << endl;
+        cout << "\nYou have already paid for this event." << endl;
         return;
     }
 
-    cout << "Processing Payment " << endl;
-    cout << "------------------" << endl;
-    cout << "Participant: " << participant.name << " (ID: " << participant.id << ")" << endl;
-    cout << "Role: " << participant.role << endl;
+    cout << "\n" << string(50, '=') << endl;
+    cout << "           PAYMENT PROCESSING" << endl;
+    cout << string(50, '=') << endl;
+    cout << "Event Participant: " << participant.name << endl;
+    cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+    cout << string(50, '-') << endl;
+
+    cout << "Proceed with payment? (y/n): ";
+    if (getValidYesNoChoice() != 'y') {
+        cout << "Payment cancelled." << endl;
+        return;
+    }
+
+    string paymentMethod = getValidPaymentMethod();
+    double paymentAmount = participant.amountDue;
+    bool paymentSuccess = false;
+
+    if (paymentMethod == "Credit Card / Debit Card") {
+        cout << "\n--- Credit Card Payment ---" << endl;
+        cout << "Amount to charge: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+        string cardNumber = getValidCreditCardNumber();
+        string expiryDate = getValidExpiryDate();
+        string cvv = getValidCVV();
+        cout << "Processing payment..." << endl;
+        paymentSuccess = true;
+
+    } else if (paymentMethod == "Bank Transfer") {
+        cout << "\n--- Bank Transfer Payment ---" << endl;
+        cout << "Amount to transfer: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+        string bankName = getValidBankName();
+        string accountNumber = getValidBankAccount();
+        cout << "Processing transfer..." << endl;
+        paymentSuccess = true;
+
+    } else if (paymentMethod == "Cash") {
+        cout << "\n--- Cash Payment ---" << endl;
+        cout << "Required amount: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+        paymentAmount = getValidAmount();
+
+        if (paymentAmount < participant.amountDue) {
+            cout << "Insufficient payment amount. Payment cancelled." << endl;
+            return;
+        }
+        paymentSuccess = true;
+    }
+
+    if (paymentSuccess) {
+        double originalAmount = participant.amountDue;
+        participant.paid = true;
+        participant.amountDue = 0.0;
+        participant.paymentMethod = paymentMethod;
+        participant.paymentDate = getCurrentDate();
+
+        cout << "\n" << string(50, '=') << endl;
+        cout << "           PAYMENT SUCCESSFUL!" << endl;
+        cout << string(50, '=') << endl;
+        cout << "Amount Paid: RM" << fixed << setprecision(2) << paymentAmount << endl;
+
+        if (paymentMethod == "Cash" && paymentAmount > originalAmount) {
+            cout << "Change: RM" << fixed << setprecision(2)
+                 << (paymentAmount - originalAmount) << endl;
+        }
+
+        generatePaymentReceipt(participant, originalAmount, paymentMethod,participant.email,selectedEvent);
+    }
+}
+
+vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName) {
+    cout << "DEBUG: Looking for organizer: '" << organizerName << "'" << endl;
+    cout << "DEBUG: Total bookings: " << b.size() << endl;
+
+    vector<Booking> organizerEvents;
+    for (size_t i = 0; i < b.size(); i++) {
+        cout << "DEBUG: Booking " << i << " organizer: '" << b[i].organizerName << "'" << endl;
+        cout << "DEBUG: Event name: '" << b[i].eventName << "'" << endl;
+        cout << "DEBUG: String comparison result: " << (b[i].organizerName == organizerName) << endl;
+
+        if (b[i].organizerName == organizerName) {
+            organizerEvents.push_back(b[i]);
+        }
+    }
+    cout << "DEBUG: Found " << organizerEvents.size() << " events" << endl;
+    return organizerEvents;
+}
+
+void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
+    cout << "\n" << string(60, '=') << endl;
+    cout << "           JOIN AN EVENT" << endl;
+    cout << string(60, '=') << endl;
+
+    vector<int> availableEvents;
+    cout << "\nAvailable Events:\n";
+    cout << string(60, '-') << endl;
+
+    for (size_t i = 0; i < bookings.size(); i++) {
+        if (bookings[i].status == "Open" &&
+            bookings[i].participants.size() < bookings[i].guestCount) {
+
+            bool alreadyJoined = false;
+            for (const auto& p : bookings[i].participants) {
+                if (p.name == currentUser.info.fullName) {
+                    alreadyJoined = true;
+                    break;
+                }
+            }
+
+            if (!alreadyJoined) {
+                availableEvents.push_back(i);
+                cout << "Event " << availableEvents.size() << ":" << endl;
+                cout << "  Name: " << bookings[i].eventName << endl;
+                cout << "  Type: " << bookings[i].eventType << endl;
+                cout << "  Venue: " << bookings[i].venue << endl;
+                cout << "  Date & Time: " << bookings[i].dateTime << endl;
+                cout << "  Available Spots: " << (bookings[i].guestCount - bookings[i].participants.size())
+                     << "/" << bookings[i].guestCount << endl;
+                cout << string(60, '-') << endl;
+            }
+        }
+    }
+
+    if (availableEvents.empty()) {
+        cout << "No events available for you to join." << endl;
+        return;
+    }
+
+    int eventChoice;
+    cout << "Select an event to join (1-" << availableEvents.size() << "): ";
+    string input;
+    getline(cin, input);
+
+    try {
+        eventChoice = stoi(input);
+        if (eventChoice < 1 || eventChoice > static_cast<int>(availableEvents.size())) {
+            cout << "Invalid selection." << endl;
+            return;
+        }
+    } catch (...) {
+        cout << "Invalid input." << endl;
+        return;
+    }
+
+    int selectedEventIndex = availableEvents[eventChoice - 1];
+    Booking& selectedEvent = bookings[selectedEventIndex];
+
+    cout << "\nSelected Event: " << selectedEvent.eventName << endl;
+    cout << "Do you want to join this event? (y/n): ";
+    if (getValidYesNoChoice() != 'y') {
+        cout << "Registration cancelled." << endl;
+        return;
+    }
+
+    Participant participant;
+    participant.name = currentUser.info.fullName;
+    participant.email = currentUser.info.email;
+    participant.role = "Customer";
+    participant.amountDue = 50.0;
+    participant.paid = false;
+    participant.paymentMethod = "";
+    participant.paymentDate = "";
+
+    participant.id = generateParticipantId(selectedEvent,participant.name,selectedEvent.participants.size());
+
+    selectedEvent.participants.push_back(participant);
+
+    cout << "\nSuccessfully joined the event!" << endl;
+    cout << "Your Participant ID: " << participant.id << endl;
     cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
 
-    cout << "Continue? (y/n): ";
-    char proceed = getValidYesNoChoice();
-    if (proceed != 'y') {
+    cout << "\nWould you like to pay now? (y/n): ";
+    if (getValidYesNoChoice() == 'y') {
+        for (auto& p : selectedEvent.participants) {
+            if (p.id == participant.id) {
+                userProcessPayment(p,selectedEvent);
+                break;
+            }
+        }
+    }
+
+    saveBookings(bookings, "bookings.txt");
+    saveParticipants(bookings, "participants.txt");
+    cout << "Registration saved successfully!" << endl;
+}
+
+
+
+void viewJoinedEvents(const vector<Booking>& bookings, const UserProfile& currentUser) {
+    cout << "\n" << string(60, '=') << endl;
+    cout << "           MY EVENTS" << endl;
+    cout << string(60, '=') << endl;
+
+    bool foundEvents = false;
+
+    for (const auto& booking : bookings) {
+        for (const auto& participant : booking.participants) {
+            if (participant.name == currentUser.info.fullName) {
+                foundEvents = true;
+                cout << "\nEvent: " << booking.eventName << endl;
+                cout << "Type: " << booking.eventType << endl;
+                cout << "Venue: " << booking.venue << endl;
+                cout << "Date & Time: " << booking.dateTime << endl;
+                cout << "Status: " << booking.status << endl;
+                cout << "My Participant ID: " << participant.id << endl;
+                cout << "Payment Status: " << (participant.paid ? "PAID" : "PENDING") << endl;
+                if (!participant.paid) {
+                    cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+                }
+                cout << string(60, '-') << endl;
+                break;
+            }
+        }
+    }
+
+    if (!foundEvents) {
+        cout << "You haven't joined any events yet." << endl;
+        cout << "Use 'Join Event' option to register for events." << endl;
+    }
+}
+
+void generateBulkPaymentReceipt(const vector<Booking>& bookings,
+                               const vector<pair<int, int>>& paidEvents,
+                               double totalAmount, const string& paymentMethod,
+                               const string& userEmail, const string& userName) {
+    cout << "\n" << string(70, '=') << endl;
+    cout << "                    BULK PAYMENT RECEIPT" << endl;
+    cout << string(70, '=') << endl;
+
+    cout << left << setw(25) << "Receipt Date:" << getCurrentDate() << endl;
+    cout << left << setw(25) << "Receipt No:" << "BULK-" << time(0) << endl;
+    cout << left << setw(25) << "Transaction Time:" << getCurrentDate() << endl;
+
+    cout << string(70, '-') << endl;
+    cout << "                  PARTICIPANT DETAILS" << endl;
+    cout << string(70, '-') << endl;
+
+    cout << left << setw(25) << "Participant Name:" << userName << endl;
+    cout << left << setw(25) << "Email Address:" << userEmail << endl;
+    cout << left << setw(25) << "Payment Method:" << paymentMethod << endl;
+    cout << left << setw(25) << "Payment Date:" << getCurrentDate() << endl;
+
+    cout << string(70, '-') << endl;
+    cout << "                    EVENTS PAID" << endl;
+    cout << string(70, '-') << endl;
+
+    double runningTotal = 0;
+    for (size_t i = 0; i < paidEvents.size(); i++) {
+        int bookingIdx = paidEvents[i].first;
+        int participantIdx = paidEvents[i].second;
+        const Booking& event = bookings[bookingIdx];
+        const Participant& participant = bookings[bookingIdx].participants[participantIdx];
+
+        cout << "\n" << (i + 1) << ". Event: " << event.eventName << endl;
+        cout << "   Type: " << event.eventType << endl;
+        cout << "   Venue: " << event.venue << endl;
+        cout << "   Date & Time: " << event.dateTime << endl;
+        cout << "   Participant ID: " << participant.id << endl;
+        cout << "   Amount: RM " << fixed << setprecision(2) << 50.0 << endl;
+        cout << string(70, '-') << endl;
+
+        runningTotal += 50.0;
+    }
+
+    cout << string(70, '-') << endl;
+    cout << "                   PAYMENT SUMMARY" << endl;
+    cout << string(70, '-') << endl;
+    cout << left << setw(25) << "Total Events:" << paidEvents.size() << endl;
+    cout << left << setw(25) << "Total Amount Paid:" << "RM " << fixed << setprecision(2) << totalAmount << endl;
+    cout << left << setw(25) << "Payment Status:" << "COMPLETED" << endl;
+    cout << left << setw(25) << "Balance Due:" << "RM 0.00" << endl;
+
+    cout << string(70, '=') << endl;
+    cout << "              THANK YOU FOR YOUR BULK PAYMENT!" << endl;
+    cout << "    This receipt has been sent to: " << userEmail << endl;
+    cout << "       Please keep this receipt for your records." << endl;
+    cout << string(70, '=') << endl << endl;
+}
+
+void processAllUserPayments(vector<Booking>& bookings, const vector<pair<int, int>>& unpaidEvents) {
+    cout << "\n" << string(70, '=') << endl;
+    cout << "           PAY ALL OUTSTANDING EVENTS" << endl;
+    cout << string(70, '=') << endl;
+
+    double totalAmount = 0;
+
+    cout << "\nEvents to be paid:" << endl;
+    cout << string(70, '-') << endl;
+
+    for (size_t i = 0; i < unpaidEvents.size(); i++) {
+        int bookingIdx = unpaidEvents[i].first;
+        int participantIdx = unpaidEvents[i].second;
+        const Booking& event = bookings[bookingIdx];
+        const Participant& participant = bookings[bookingIdx].participants[participantIdx];
+
+        cout << "\n" << (i + 1) << ". Event: " << event.eventName << endl;
+        cout << "   Type: " << event.eventType << endl;
+        cout << "   Venue: " << event.venue << endl;
+        cout << "   Date & Time: " << event.dateTime << endl;
+        cout << "   Your Participant ID: " << participant.id << endl;
+        cout << "   Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+        cout << string(70, '-') << endl;
+
+        totalAmount += participant.amountDue;
+    }
+
+    cout << "\n" << string(70, '=') << endl;
+    cout << "PAYMENT SUMMARY:" << endl;
+    cout << "Total events: " << unpaidEvents.size() << endl;
+    cout << "Total amount to pay: RM" << fixed << setprecision(2) << totalAmount << endl;
+    cout << string(70, '=') << endl;
+
+    cout << "\nConfirm payment for all " << unpaidEvents.size() << " events? (y/n): ";
+
+    if (getValidYesNoChoice() != 'y') {
+        cout << "Payment cancelled." << endl;
+        return;
+    }
+
+    string paymentMethod = getValidPaymentMethod();
+    bool paymentSuccess = false;
+
+    if (paymentMethod == "Credit Card / Debit Card") {
+        cout << "\n--- Credit Card Payment ---" << endl;
+        cout << "Total charge: RM" << fixed << setprecision(2) << totalAmount << endl;
+        string cardNumber = getValidCreditCardNumber();
+        string expiryDate = getValidExpiryDate();
+        string cvv = getValidCVV();
+        cout << "Processing payment..." << endl;
+        paymentSuccess = true;
+
+    } else if (paymentMethod == "Bank Transfer") {
+        cout << "\n--- Bank Transfer Payment ---" << endl;
+        cout << "Total transfer: RM" << fixed << setprecision(2) << totalAmount << endl;
+        string bankName = getValidBankName();
+        string accountNumber = getValidBankAccount();
+        cout << "Processing transfer..." << endl;
+        paymentSuccess = true;
+
+    } else if (paymentMethod == "Cash") {
+        cout << "\n--- Cash Payment ---" << endl;
+        cout << "Total required: RM" << fixed << setprecision(2) << totalAmount << endl;
+        double paidAmount = getValidAmount();
+
+        if (paidAmount < totalAmount) {
+            cout << "Insufficient amount. Payment cancelled." << endl;
+            return;
+        }
+
+        if (paidAmount > totalAmount) {
+            cout << "Change: RM" << fixed << setprecision(2) << (paidAmount - totalAmount) << endl;
+        }
+        paymentSuccess = true;
+    }
+
+    if (paymentSuccess) {
+        string userEmail = "";
+        string userName = "";
+
+        for (const auto& event : unpaidEvents) {
+            int bookingIdx = event.first;
+            int participantIdx = event.second;
+
+            Participant& participant = bookings[bookingIdx].participants[participantIdx];
+
+            if (userEmail.empty()) {
+                userEmail = participant.email;
+                userName = participant.name;
+            }
+
+            participant.paid = true;
+            participant.amountDue = 0.0;
+            participant.paymentMethod = paymentMethod;
+            participant.paymentDate = getCurrentDate();
+
+            cout << "✓ Paid for: " << bookings[bookingIdx].eventName << endl;
+        }
+
+        generateBulkPaymentReceipt(bookings, unpaidEvents, totalAmount, paymentMethod, userEmail, userName);
+
+        cout << "\n" << string(70, '=') << endl;
+        cout << "           ALL PAYMENTS COMPLETED!" << endl;
+        cout << string(70, '=') << endl;
+        cout << "Events paid: " << unpaidEvents.size() << endl;
+        cout << "Total amount: RM" << fixed << setprecision(2) << totalAmount << endl;
+        cout << "Payment method: " << paymentMethod << endl;
+        cout << string(70, '=') << endl;
+    }
+}
+
+void processPaymentTransaction(Participant& participant,const Booking& eventInfo) {
+    if (participant.paid) {
+        cout << "\nThis payment has already been completed." << endl;
+        return;
+    }
+
+    cout << "\n" << string(50, '=') << endl;
+    cout << "           PAYMENT PROCESSING" << endl;
+    cout << string(50, '=') << endl;
+    cout << "Participant: " << participant.name << " (ID: " << participant.id << ")" << endl;
+    cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+    cout << string(50, '-') << endl;
+
+    cout << "Proceed with payment? (y/n): ";
+    if (getValidYesNoChoice() != 'y') {
         cout << "Payment cancelled." << endl;
         return;
     }
@@ -751,405 +1261,419 @@ void proceedPayment(Participant& participant, vector<Booking>& bookings) {
     string paymentMethod = getValidPaymentMethod();
     participant.paymentMethod = paymentMethod;
 
-    cout << "\n" << string(40, '-') << endl;
-    cout << "PAYMENT REQUIRED: RM" << fixed << setprecision(2) << participant.amountDue << endl;
-    cout << string(40, '-') << endl;
+    double paymentAmount = participant.amountDue;
+    bool paymentSuccess = false;
 
     if (paymentMethod == "Credit Card / Debit Card") {
-        cout << "\n--- Credit Card / Debit Card Payment Process ---" << endl;
-        cout << "Please provide your card details:" << endl;
-
+        cout << "\n--- Credit Card Payment ---" << endl;
         string cardNumber = getValidCreditCardNumber();
         string expiryDate = getValidExpiryDate();
         string cvv = getValidCVV();
+        cout << "Processing payment..." << endl;
+        paymentSuccess = true;
 
-        cout << "\nCard Details:" << endl;
-        cout << "Card Number: " << cardNumber << endl;
-        cout << "Expiry Date: " << expiryDate << endl;
-        cout << "CVV: " << cvv << endl;
-
-        cout << "\nProcessing card payment..." << endl;
-        cout << "Please wait while we verify your card..." << endl;
-
-        for (int i = 0; i < 3; i++) {
-            cout << ".";
-
-        }
-        cout << endl;
-
-    }
-    else if (paymentMethod == "Bank Transfer") {
-        cout << "\n--- Bank Transfer Payment Process ---" << endl;
-        cout << "Please provide your bank details:" << endl;
-
+    } else if (paymentMethod == "Bank Transfer") {
+        cout << "\n--- Bank Transfer Payment ---" << endl;
         string bankName = getValidBankName();
         string accountNumber = getValidBankAccount();
+        cout << "Processing transfer..." << endl;
+        paymentSuccess = true;
 
-        cout << "\nBank Details:" << endl;
-        cout << "Bank Name: " << bankName << endl;
-        cout << "Account Number: " << accountNumber << endl;
-
-        cout << "\nTransfer Details:" << endl;
-        cout << "Amount: RM" << fixed << setprecision(2) << participant.amountDue << endl;
-        cout << "Reference: PAY-" << participant.id << "-" << time(0) << endl;
-
-        cout << "\nPlease complete the transfer using the details above." << endl;
-        cout << "Payment will be confirmed once transfer is received." << endl;
-
-    }
-    else if (paymentMethod == "Cash") {
-        cout << "\n--- Cash Payment Process ---" << endl;
-        cout << "Please prepare cash amount: RM" << fixed << setprecision(2) << participant.amountDue << endl;
-        cout << "Note: Change will be provided if you pay more than required." << endl;
-    }
-
-    double paymentAmount;
-
-    if (paymentMethod == "Credit Card / Debit Card" || paymentMethod == "Bank Transfer") {
-        paymentAmount = participant.amountDue;
-        cout << "\n" << string(40, '=') << endl;
-        cout << "AUTOMATIC PAYMENT PROCESSING" << endl;
-        cout << string(40, '=') << endl;
-        cout << "Amount will be automatically charged: RM" << fixed << setprecision(2) << paymentAmount << endl;
-        cout << "No manual amount entry required." << endl;
-    }
-    else {
-        cout << "\n" << string(40, '=') << endl;
-        cout << "ENTER PAYMENT AMOUNT" << endl;
-        cout << string(40, '=') << endl;
+    } else if (paymentMethod == "Cash") {
+        cout << "\n--- Cash Payment ---" << endl;
+        cout << "Required amount: RM" << fixed << setprecision(2) << participant.amountDue << endl;
         paymentAmount = getValidAmount();
 
         if (paymentAmount < participant.amountDue) {
-            cout << endl;
-            cout << "Payment amount insufficient!" << endl;
-            cout << "Amount due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
-            cout << "Amount paid: RM" << fixed << setprecision(2) << paymentAmount << endl;
-            cout << "Please pay the full amount required." << endl;
-            return;
-        }
-    }
-
-    participant.paid = true;
-    double originalAmountDue = participant.amountDue;
-    participant.amountDue = 0.0;
-    cout << endl;
-    cout << "Payment successful!" << endl;
-    cout << "Amount due: RM" << fixed << setprecision(2) << originalAmountDue << endl;
-    cout << "Amount paid: RM" << fixed << setprecision(2) << paymentAmount << endl;
-
-    if (paymentMethod == "Cash" && paymentAmount > originalAmountDue) {
-        double change = paymentAmount - originalAmountDue;
-        cout << "Change: RM" << fixed << setprecision(2) << change << endl;
-    }
-
-    generatePaymentReceipt(participant, originalAmountDue, paymentMethod);
-
-    if (paymentMethod == "Credit Card / Debit Card") {
-        cout << "Your card has been charged successfully." << endl;
-        cout << "A receipt has been sent to your registered email." << endl;
-    }
-    else if (paymentMethod == "Bank Transfer") {
-        cout << "Bank transfer confirmed. Reference: PAY-" << participant.id << "-" << time(0) << endl;
-    }
-    else if (paymentMethod == "Cash") {
-        cout << "Cash payment received. Thank you!" << endl;
-    }
-
-    participant.paymentDate = "Today";
-    saveParticipants(bookings, "participants.txt");
-}
-
-void processAllPayments(vector<Participant>& participants, vector<Booking>& bookings) {
-    if (participants.empty()) {
-        cout << "No participants to process payments for." << endl;
-        return;
-    }
-
-    cout << "\n" << string(60, '=') << endl;
-    cout << "           BULK PAYMENT PROCESSING" << endl;
-    cout << string(60, '=') << endl;
-
-    double totalAmountDue = 0.0;
-    int unpaidCount = 0;
-
-    for (auto& participant : participants) {
-        if (!participant.paid) {
-            totalAmountDue += participant.amountDue;
-            unpaidCount++;
-        }
-    }
-
-    if (unpaidCount == 0) {
-        cout << "All participants have already paid!" << endl;
-        return;
-    }
-
-
-    cout << "Payment Summary:" << endl;
-    cout << "Total Participants: " << participants.size() << endl;
-    cout << "Unpaid Participants: " << unpaidCount << endl;
-    cout << "Total Amount Due: RM" << fixed << setprecision(2) << totalAmountDue << endl;
-    cout << string(60, '-') << endl;
-
-    cout << "Do you want to process payment for ALL unpaid participants? (y/n): ";
-    char proceed = getValidYesNoChoice();
-    if (proceed != 'y') {
-        cout << "Bulk payment cancelled." << endl;
-        return;
-    }
-
-    cout << "\nSelect payment method for bulk payment:" << endl;
-    string paymentMethod = getValidPaymentMethod();
-
-    cout << "\n" << string(60, '=') << endl;
-    cout << "PAYMENT REQUIRED: RM" << fixed << setprecision(2) << totalAmountDue << endl;
-    cout << string(60, '=') << endl;
-
-    if (paymentMethod == "Credit Card / Debit Card") {
-        cout << "AUTOMATIC PAYMENT PROCESSING" << endl;
-        cout << "Amount will be charged: RM" << fixed << setprecision(2) << totalAmountDue << endl;
-
-        cout << "\nEnter Credit Card / Debit Card Details:" << endl;
-        cout << "----------------------------------------" << endl;
-
-        string cardNumber = getValidCreditCardNumber();
-        string expiryDate = getValidExpiryDate();
-        string cvv = getValidCVV();
-
-        cout << "\nProcessing payment..." << endl;
-        cout << " Payment processed successfully!" << endl;
-
-    }
-    else if (paymentMethod == "Bank Transfer") {
-        cout << "AUTOMATIC PAYMENT PROCESSING" << endl;
-        cout << "Amount will be transferred: RM" << fixed << setprecision(2) << totalAmountDue << endl;
-
-        cout << "\nEnter Bank Transfer Details:" << endl;
-        cout << "----------------------------" << endl;
-
-        string accountNumber = getValidBankAccount();
-        string bankName = getValidBankName();
-
-        cout << "\nProcessing bank transfer..." << endl;
-        cout << " Bank transfer processed successfully!" << endl;
-
-    }
-    else if (paymentMethod == "Cash") {
-        cout << "Enter payment amount: RM";
-        double paymentAmount = getValidAmount();
-
-        if (paymentAmount < totalAmountDue) {
             cout << "Insufficient payment amount. Payment cancelled." << endl;
             return;
         }
-
-        if (paymentAmount > totalAmountDue) {
-            double change = paymentAmount - totalAmountDue;
-            cout << "Change: RM" << fixed << setprecision(2) << change << endl;
-        }
-
-        cout << "\n Cash payment received!" << endl;
+        paymentSuccess = true;
     }
 
+    if (paymentSuccess) {
+        participant.paid = true;
+        double originalAmount = participant.amountDue;
+        participant.amountDue = 0.0;
+        participant.paymentDate = getCurrentDate();
 
+        cout << "\n" << string(50, '=') << endl;
+        cout << "           PAYMENT SUCCESSFUL!" << endl;
+        cout << string(50, '=') << endl;
+        cout << "Amount Paid: RM" << fixed << setprecision(2) << paymentAmount << endl;
 
-    cout << "\n" << string(60, '=') << endl;
-    cout << "PROCESSING BULK PAYMENT" << endl;
-    cout << string(60, '=') << endl;
-
-    for (auto& participant : participants) {
-        if (!participant.paid) {
-            cout << "Processing payment for: " << participant.name << " - RM" << fixed << setprecision(2) << participant.amountDue << endl;
-
-            participant.paymentMethod = paymentMethod;
-            participant.paid = true;
-            participant.amountDue = 0.0;
-            participant.paymentDate = "Today";
-
-            cout << " Payment processed successfully!" << endl;
+        if (paymentMethod == "Cash" && paymentAmount > originalAmount) {
+            cout << "Change: RM" << fixed << setprecision(2) << (paymentAmount - originalAmount) << endl;
         }
+
+        generatePaymentReceipt(participant, originalAmount, paymentMethod,participant.email,eventInfo);
     }
-
-    saveParticipants(bookings, "participants.txt");
-
-
-    cout << "\n" << string(60, '=') << endl;
-    cout << "BULK PAYMENT COMPLETED!" << endl;
-    cout << string(60, '=') << endl;
-    cout << "Total participants processed: " << unpaidCount << endl;
-    cout << "Total amount collected: RM" << fixed << setprecision(2) << totalAmountDue << endl;
-    cout << "Payment method used: " << paymentMethod << endl;
-    cout << string(60, '=') << endl;
-
-    cout << "\nGenerating bulk payment receipt..." << endl;
-    cout << "Receipt will be sent to your email." << endl;
-    string email = getValidEmail();
-    cout << "Bulk payment receipt sent to: " << email << endl;
 }
 
-void displayPaymentSummary(const vector<Participant>& participants) {
-    if (participants.empty()) {
-        cout << "No participants to display." << endl;
+void viewAllPaymentsSummary( vector<Booking>& b,const string& organizerName) {
+    cout << "\n" << string(70, '=') << endl;
+    cout << "                   PAYMENT SUMMARY" << endl;
+    cout << string(70, '=') << endl;
+
+    double totalRevenue = 0;
+    double totalPending = 0;
+    int totalPaid = 0;
+    int totalUnpaid = 0;
+    bool hasEvents = false;
+
+    for (const auto& booking : b) {
+        if (booking.organizerName != organizerName) continue;
+
+        hasEvents = true;
+        if (booking.participants.empty()) continue;
+
+        cout << "\nEvent: " << booking.eventName << " (" << booking.dateTime << ")" << endl;
+        cout << string(70, '-') << endl;
+        cout << left << setw(25) << "Participant"
+             << setw(12) << "Amount"
+             << setw(8) << "Status"
+             << setw(15) << "Method" << endl;
+        cout << string(70, '-') << endl;
+
+        for (const auto& p : booking.participants) {
+            cout << left << setw(25) << p.name
+                 << setw(12) << ("RM" + to_string((int)(p.paid ? 0 : p.amountDue)))
+                 << setw(8) << (p.paid ? "PAID" : "PENDING")
+                 << setw(15) << (p.paid ? p.paymentMethod : "N/A") << endl;
+
+            if (p.paid) {
+                totalPaid++;
+                totalRevenue += 50.0;
+            } else {
+                totalUnpaid++;
+                totalPending += p.amountDue;
+            }
+        }
+    }
+
+    if (!hasEvents) {
+        cout << "No events found for organizer: " << organizerName << endl;
         return;
     }
 
-    cout << "Payment Summary" << endl;
-    cout << "----------------" << endl;
-    cout << setw(5) << "ID" << setw(20) << "Name" << setw(15) << "Role"
-        << setw(12) << "Amount Due" << setw(8) << "Paid" << setw(15) << "Payment Method" << endl;
-    cout << string(85, '-') << endl;
+    cout << "\n" << string(70, '=') << endl;
+    cout << "OVERALL SUMMARY:" << endl;
+    cout << "Paid Participants: " << totalPaid << endl;
+    cout << "Unpaid Participants: " << totalUnpaid << endl;
+    cout << "Total Revenue Collected: RM" << fixed << setprecision(2) << totalRevenue << endl;
+    cout << "Total Pending: RM" << fixed << setprecision(2) << totalPending << endl;
+    cout << string(70, '=') << endl;
+}
 
-    double totalDue = 0.0;
-    double totalPaid = 0.0;
-    int paidCount = 0;
+void processIndividualPayment(vector<Booking>& bookings,const string& organizerName) {
+    vector<pair<int, int>> allParticipants;
 
-    for (const auto& participant : participants) {
-        cout << setw(5) << participant.id
-            << setw(20) << participant.name
-            << setw(15) << participant.role
-            << setw(12) << fixed << setprecision(2) << participant.amountDue
-            << setw(8) << (participant.paid ? "Yes" : "No")
-            << setw(15) << (participant.paid ? participant.paymentMethod : "N/A") << endl;
+    cout << "\n" << string(60, '=') << endl;
+    cout << "         PROCESS INDIVIDUAL PAYMENT" << endl;
+    cout << string(60, '=') << endl;
 
-        totalDue += participant.amountDue;
-        if (participant.paid) {
-            totalPaid += participant.amountDue;
-            paidCount++;
+    cout << "All Participants:" << endl;
+    cout << string(60, '-') << endl;
+    cout << left << setw(5) << "No" << setw(20) << "Name"
+         << setw(20) << "Event" << setw(10) << "Status" << endl;
+    cout << string(60, '-') << endl;
+
+    int counter = 1;
+    for (size_t i = 0; i < bookings.size(); i++) {
+        if (bookings[i].organizerName == organizerName) {
+            for (size_t j = 0; j < bookings[i].participants.size(); j++) {
+                const auto& p = bookings[i].participants[j];
+                cout << left << setw(5) << counter
+                     << setw(20) << p.name
+                     << setw(20) << bookings[i].eventName
+                     << setw(10) << (p.paid ? "PAID" : "PENDING") << endl;
+
+                allParticipants.push_back(make_pair(i, j));
+                counter++;
+            }
         }
     }
 
-    cout << string(85, '-') << endl;
-    cout << "Total Participants: " << participants.size() << endl;
-    cout << "Paid: " << paidCount << " | Unpaid: " << (participants.size() - paidCount) << endl;
-    cout << "Total Amount Due: RM" << fixed << setprecision(2) << totalDue << endl;
-    cout << "Total Amount Paid: RM" << fixed << setprecision(2) << totalPaid << endl;
-    cout << "Outstanding: RM" << fixed << setprecision(2) << (totalDue - totalPaid) << endl;
-}
-
-void showPaymentMenu(vector<Participant>& participants, vector<Booking>& bookings) {
-    if (participants.empty()) {
-        cout << "No participants to process payments for." << endl;
+    if (allParticipants.empty()) {
+        cout << "No participants found." << endl;
         return;
     }
 
-    bool contMenu = true;
-    while (contMenu) {
-        cout << "Payment Menu" << endl;
-        cout << "------------" << endl;
-        cout << "1. Process payment for one participant" << endl;
-        cout << "2. Process payments for all participants" << endl;
-        cout << "3. Show payment summary" << endl;
-        cout << "4. Back to main menu" << endl;
-        cout << "Enter your choice (1-4): ";
+    cout << "\nSelect participant to process payment (1-" << allParticipants.size() << "): ";
+    string input;
+    getline(cin, input);
+
+    try {
+        int selection = stoi(input);
+        if (selection < 1 || selection > static_cast<int>(allParticipants.size())) {
+            cout << "Invalid selection." << endl;
+            return;
+        }
+
+        int bookingIdx = allParticipants[selection - 1].first;
+        int participantIdx = allParticipants[selection - 1].second;
+
+        processPaymentTransaction(bookings[bookingIdx].participants[participantIdx],bookings[bookingIdx]);
+
+        saveBookings(bookings, "bookings.txt");
+        saveParticipants(bookings, "participants.txt");
+
+    } catch (...) {
+        cout << "Invalid input." << endl;
+    }
+}
+
+void processEventBulkPayments(vector<Booking>& b,const string& organizerName) {
+    cout << "\n" << string(60, '=') << endl;
+    cout << "         EVENT BULK PAYMENT PROCESSING" << endl;
+    cout << string(60, '=') << endl;
+
+    vector<int> eventsWithUnpaid;
+    for (size_t i = 0; i < b.size(); i++) {
+        if (b[i].organizerName == organizerName) {
+            int unpaidCount = 0;
+            for (const auto& p : b[i].participants) {
+                if (!p.paid) unpaidCount++;
+            }
+            if (unpaidCount > 0) {
+                eventsWithUnpaid.push_back(i);
+                cout << eventsWithUnpaid.size() << ". " << b[i].eventName
+                     << " (Unpaid: " << unpaidCount << ")" << endl;
+            }
+        }
+    }
+
+    if (eventsWithUnpaid.empty()) {
+        cout << "No events with unpaid participants." << endl;
+        return;
+    }
+
+    cout << "\nSelect event for bulk processing (1-" << eventsWithUnpaid.size() << "): ";
+    string input;
+    getline(cin, input);
+
+    try {
+        int eventChoice = stoi(input);
+        if (eventChoice < 1 || eventChoice > static_cast<int>(eventsWithUnpaid.size())) {
+            cout << "Invalid selection." << endl;
+            return;
+        }
+
+        int selectedEventIdx = eventsWithUnpaid[eventChoice - 1];
+        Booking& selectedEvent = b[selectedEventIdx];
+
+        double totalAmount = 0;
+        int unpaidCount = 0;
+        for (const auto& p : selectedEvent.participants) {
+            if (!p.paid) {
+                totalAmount += p.amountDue;
+                unpaidCount++;
+            }
+        }
+
+        cout << "\nBulk Payment Summary for: " << selectedEvent.eventName << endl;
+        cout << "Unpaid Participants: " << unpaidCount << endl;
+        cout << "Total Amount: RM" << fixed << setprecision(2) << totalAmount << endl;
+        cout << "\nMark all as paid? (y/n): ";
+
+        if (getValidYesNoChoice() == 'y') {
+            for (auto& p : selectedEvent.participants) {
+                if (!p.paid) {
+                    p.paid = true;
+                    p.amountDue = 0.0;
+                    p.paymentMethod = "Bulk Processing";
+                    p.paymentDate = getCurrentDate();
+                    cout << "✓ Marked as paid: " << p.name << endl;
+                }
+            }
+
+            cout << "\n" << string(50, '=') << endl;
+            cout << "BULK PROCESSING COMPLETED!" << endl;
+            cout << "Participants processed: " << unpaidCount << endl;
+            cout << "Total amount: RM" << fixed << setprecision(2) << totalAmount << endl;
+            cout << string(50, '=') << endl;
+
+            saveBookings(b, "bookings.txt");
+            saveParticipants(b, "participants.txt");
+        }
+
+    } catch (...) {
+        cout << "Invalid input." << endl;
+    }
+}
+
+void processUserPaymentSelection(vector<Booking>& bookings,
+                                const vector<pair<int, int>>& unpaidEvents,
+                                const UserProfile& currentUser) {
+
+    if (unpaidEvents.size() == 1) {
+        int bookingIdx = unpaidEvents[0].first;
+        int participantIdx = unpaidEvents[0].second;
+
+        cout << "\nProcessing payment for: " << bookings[bookingIdx].eventName << endl;
+        Participant& participant = bookings[bookingIdx].participants[participantIdx];
+        if (participant.email.empty()) {
+            participant.email = currentUser.info.email;
+        }
+        processPaymentTransaction(participant,bookings[bookingIdx]);
+
+    } else if (unpaidEvents.size() > 1) {
+        cout << "\nSelect payment option:" << endl;
+        cout << string(50, '-') << endl;
+
+        for (size_t i = 0; i < unpaidEvents.size(); i++) {
+            int bookingIdx = unpaidEvents[i].first;
+            int participantIdx = unpaidEvents[i].second;
+
+            cout << (i + 1) << ". " << bookings[bookingIdx].eventName
+                 << " - RM" << fixed << setprecision(2)
+                 << bookings[bookingIdx].participants[participantIdx].amountDue << endl;
+        }
+
+        cout << (unpaidEvents.size() + 1) << ". Pay All Outstanding Events" << endl;
+        cout << "\nEnter choice (1-" << (unpaidEvents.size() + 1) << "): ";
 
         string input;
         getline(cin, input);
 
-        if (input.empty()) {
-            cout << "Error: Please enter a number." << endl;
-            continue;
-        }
+        try {
+            int choice = stoi(input);
 
-        bool isValidNumber = true;
-        for (char i : input) {
-            if (!isdigit(i)) {
-                isValidNumber = false;
-                break;
+            if (choice >= 1 && choice <= static_cast<int>(unpaidEvents.size())) {
+                int bookingIdx = unpaidEvents[choice - 1].first;
+                int participantIdx = unpaidEvents[choice - 1].second;
+
+                cout << "\nProcessing payment for: " << bookings[bookingIdx].eventName << endl;
+                processPaymentTransaction(bookings[bookingIdx].participants[participantIdx],bookings[bookingIdx]);
+
+            } else if (choice == static_cast<int>(unpaidEvents.size()) + 1) {
+                cout << "\nProcessing payment for all outstanding events..." << endl;
+                processAllUserPayments(bookings, unpaidEvents);
+            } else {
+                cout << "Invalid selection. Please enter a number between 1 and "
+                     << (unpaidEvents.size() + 1) << "." << endl;
+                return;
+            }
+        } catch (...) {
+            cout << "Invalid input. Please enter a valid number." << endl;
+            return;
+        }
+    } else {
+        cout << "No unpaid events found." << endl;
+        return;
+    }
+
+    saveBookings(bookings, "bookings.txt");
+    saveParticipants(bookings, "participants.txt");
+    cout << "\nPayment information updated successfully!" << endl;
+}
+
+void userViewAndMakePayments(vector<Booking>& bookings, const UserProfile& currentUser) {
+    cout << "\n" << string(60, '=') << endl;
+    cout << "           MY PAYMENT STATUS" << endl;
+    cout << string(60, '=') << endl;
+
+    vector<pair<int, int>> myPayments;
+    bool foundPayments = false;
+
+    for (size_t i = 0; i < bookings.size(); i++) {
+        for (size_t j = 0; j < bookings[i].participants.size(); j++) {
+            if (bookings[i].participants[j].name == currentUser.info.fullName) {
+                myPayments.push_back(make_pair(i, j));
+                foundPayments = true;
             }
         }
+    }
 
-        if (!isValidNumber) {
-            cout << "Error: Please enter only numbers (1-4)." << endl;
+    if (!foundPayments) {
+        cout << "You haven't joined any events yet." << endl;
+        return;
+    }
+
+    cout << "\nYour Events and Payment Status:" << endl;
+    cout << string(60, '-') << endl;
+
+    vector<pair<int, int>> unpaidEvents;
+
+    for (size_t i = 0; i < myPayments.size(); i++) {
+        int bookingIdx = myPayments[i].first;
+        int participantIdx = myPayments[i].second;
+
+        const Booking& booking = bookings[bookingIdx];
+        const Participant& participant = booking.participants[participantIdx];
+
+        cout << "\n" << (i + 1) << ". Event: " << booking.eventName << endl;
+        cout << "   Date: " << booking.dateTime << endl;
+        cout << "   Status: " << (participant.paid ? "PAID " : "PENDING ") << endl;
+
+        if (participant.paid) {
+            cout << "   Payment Method: " << participant.paymentMethod << endl;
+            cout << "   Payment Date: " << participant.paymentDate << endl;
+        } else {
+            cout << "   Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+            unpaidEvents.push_back(make_pair(bookingIdx, participantIdx));
+        }
+        cout << string(60, '-') << endl;
+    }
+
+    if (!unpaidEvents.empty()) {
+        cout << "\nYou have " << unpaidEvents.size() << " unpaid event(s)." << endl;
+        cout << "Would you like to make a payment now? (y/n): ";
+
+        if (getValidYesNoChoice() == 'y') {
+            processUserPaymentSelection(bookings, unpaidEvents, currentUser);
+        }
+    } else {
+        cout << "\nAll your payments are up to date! " << endl;
+    }
+}
+
+
+
+void organizerPaymentMenu(vector<Booking>& bookings,const string& organizerName) {
+    int choice;
+    do {
+        cout << "\n" << string(50, '=') << endl;
+        cout << "         PAYMENT MANAGEMENT" << endl;
+        cout << string(50, '=') << endl;
+        cout << "1. View Payment Summary" << endl;
+        cout << "2. Process Individual Payment" << endl;
+        cout << "3. Process Event Bulk Payments" << endl;
+        cout << "4. Back to Organizer Menu" << endl;
+        cout << "Enter choice (1-4): ";
+
+        string input;
+        getline(cin, input);
+
+        try {
+            choice = stoi(input);
+        } catch (...) {
+            cout << "Invalid input. Please enter 1-4." << endl;
             continue;
         }
 
-        int choice = stoi(input);
+        vector<Booking> orgEvents = getOrganizerEvents(bookings, organizerName);
 
         switch (choice) {
-        case 1:
-            processSinglePayment(participants, bookings);
-            break;
-        case 2:
-            processAllPayments(participants, bookings);
-            break;
-        case 3:
-            displayPaymentSummary(participants);
-            break;
-        case 4:
-            contMenu = false;
-            cout << "Return to main menu" << endl;
-            break;
-        default:
-            cout << "Error: Please enter 1-4 only." << endl;
-            break;
+            case 1:
+                viewAllPaymentsSummary(bookings,organizerName);
+                break;
+            case 2:
+                processIndividualPayment(bookings,organizerName);
+                break;
+            case 3:
+                processEventBulkPayments(bookings,organizerName);
+                break;
+            case 4:
+                cout << "Returning to organizer menu..." << endl;
+                break;
+            default:
+                cout << "Please enter 1-4 only." << endl;
+                break;
         }
-    }
+    } while (choice != 4);
 }
 
-void processSinglePayment(vector<Participant>& participants, vector<Booking>& bookings) {
-    if (participants.empty()) {
-        cout << "No participants to process payments for." << endl;
-        return;
-    }
-
-    cout << "Available Participants" << endl;
-    cout << "----------------" << endl;
-    cout << setw(5) << "ID" << setw(20) << "Name" << setw(15) << "Role"
-        << setw(12) << "Amount Due" << setw(8) << "Paid" << endl;
-    cout << string(70, '-') << endl;
-
-    for (const auto& participant : participants) {
-        cout << setw(5) << participant.id
-            << setw(20) << participant.name
-            << setw(15) << participant.role
-            << setw(12) << fixed << setprecision(2) << participant.amountDue
-            << setw(8) << (participant.paid ? "Yes" : "No") << endl;
-    }
-    cout << endl;
-    cout << "Enter participant ID to process payment: ";
-    string input;
-    getline(cin, input);
-
-    if (input.empty()) {
-        cout << "Error: Please enter a participant ID." << endl;
-        return;
-    }
-
-    bool isValidNumber = true;
-    for (char i : input) {
-        if (!isdigit(i)) {
-            isValidNumber = false;
-            break;
-        }
-    }
-
-    if (!isValidNumber) {
-        cout << "Error: Please enter a valid participant ID." << endl;
-        return;
-    }
-
-    int participantId = stoi(input);
-
-    Participant* selectedParticipant = nullptr;
-    for (auto& participant : participants) {
-        if (participant.id == participantId) {
-            selectedParticipant = &participant;
-            break;
-        }
-    }
-
-    if (selectedParticipant == nullptr) {
-        cout << "Error: Participant with ID " << participantId << " not found." << endl;
-        return;
-    }
-
-    if (selectedParticipant->paid) {
-        cout << "Participant " << selectedParticipant->name << " has already paid." << endl;
-        return;
-    }
-
-    proceedPayment(*selectedParticipant, bookings);
-}
 
 string getValidEmail() {
     string email;
@@ -1193,95 +1717,58 @@ string getValidEmail() {
     return email;
 }
 
-void generatePaymentReceipt(const Participant& participant, double amountDue, const string& paymentMethod) {
-    cout << "\n" << string(50, '=') << endl;
-    cout << "           PAYMENT RECEIPT" << endl;
-    cout << string(50, '=') << endl;
-    cout << "Date: " << participant.paymentDate << endl;
-    cout << "Receipt No: RCP-" << participant.id << "-" << time(0) << endl;
-    cout << string(50, '-') << endl;
-    cout << "Participant Details:" << endl;
-    cout << "  Name: " << participant.name << endl;
-    cout << "  ID: " << participant.id << endl;
-    cout << "  Role: " << participant.role << endl;
-    cout << string(50, '-') << endl;
-    cout << "Payment Details:" << endl;
-    cout << "  Method: " << paymentMethod << endl;
-    cout << "  Amount Due: RM" << fixed << setprecision(2) << amountDue << endl;
-    cout << "  Amount Paid: RM" << fixed << setprecision(2) << amountDue << endl;
+void generatePaymentReceipt(const Participant& participant, double amountDue,
+                           const string& paymentMethod, const string& userEmail,
+                           const Booking& eventInfo) {
+    cout << "\n" << string(70, '=') << endl;
+    cout << "                    PAYMENT RECEIPT" << endl;
+    cout << string(70, '=') << endl;
 
-    cout << string(50, '-') << endl;
-    cout << "Receipt Delivery:" << endl;
-    string email = getValidEmail();
-    cout << "Receipt will be sent to: " << email << endl;
+    cout << left << setw(25) << "Receipt Date:" << getCurrentDate() << endl;
+    cout << left << setw(25) << "Receipt No:" << "RCP-" << participant.id << "-" << time(0) << endl;
+    cout << left << setw(25) << "Transaction Time:" << participant.paymentDate << endl;
 
-    cout << string(50, '-') << endl;
-    cout << "Status: PAID" << endl;
-    cout << string(50, '=') << endl;
-    cout << "Thank you for your payment!" << endl;
-    cout << "A receipt has been sent to your email." << endl;
-    cout << string(50, '=') << endl << endl;
-}
+    cout << string(70, '-') << endl;
+    cout << "                    EVENT DETAILS" << endl;
+    cout << string(70, '-') << endl;
 
-void showPaymentMenuForEvents(vector<Booking>& bookings) {
-    cout << "\n" << string(60, '=') << endl;
-    cout << "           PAYMENT MANAGEMENT SYSTEM" << endl;
-    cout << string(60, '=') << endl;
+    cout << left << setw(25) << "Event Name:" << eventInfo.eventName << endl;
+    cout << left << setw(25) << "Event Type:" << eventInfo.eventType << endl;
+    cout << left << setw(25) << "Venue:" << eventInfo.venue << endl;
+    cout << left << setw(25) << "Date & Time:" << eventInfo.dateTime << endl;
+    cout << left << setw(25) << "Organizer:" << eventInfo.organizerName << endl;
 
-    cout << "\nAvailable Events for Payment Processing:\n";
-    cout << string(60, '-') << endl;
-    for (size_t i = 0; i < bookings.size(); i++) {
-        cout << "Event " << (i + 1) << ":" << endl;
-        cout << "  Name: " << bookings[i].eventName << endl;
-        cout << "  Type: " << bookings[i].eventType << endl;
-        cout << "  Venue: " << bookings[i].venue << endl;
-        cout << "  Date & Time: " << bookings[i].dateTime << endl;
-        cout << "  Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
-        cout << string(60, '-') << endl;
-    }
+    cout << string(70, '-') << endl;
+    cout << "                  PARTICIPANT DETAILS" << endl;
+    cout << string(70, '-') << endl;
 
-    int eventChoice;
-    cout << "Select an event to process payments" << endl;
-    cout << "--------------------------------" << endl;
-    cout << "Enter event number (1-" << bookings.size() << "): ";
+    cout << left << setw(25) << "Participant Name:" << participant.name << endl;
+    cout << left << setw(25) << "Participant ID:" << participant.id << endl;
+    cout << left << setw(25) << "Role:" << participant.role << endl;
+    cout << left << setw(25) << "Email Address:" << userEmail << endl;
 
-    string input;
-    getline(cin, input);
+    cout << string(70, '-') << endl;
+    cout << "                   PAYMENT DETAILS" << endl;
+    cout << string(70, '-') << endl;
 
-    try {
-        eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(bookings.size())) {
-            cout << "\nError: Invalid event selection. Please enter a number between 1 and " << bookings.size() << "." << endl;
-            return;
-        }
-    }
-    catch (...) {
-        cout << "\nError: Invalid input. Please enter a valid number." << endl;
-        return;
-    }
+    cout << left << setw(25) << "Payment Method:" << paymentMethod << endl;
+    cout << left << setw(25) << "Amount Due:" << "RM " << fixed << setprecision(2) << amountDue << endl;
+    cout << left << setw(25) << "Amount Paid:" << "RM " << fixed << setprecision(2) << amountDue << endl;
+    cout << left << setw(25) << "Payment Status:" << "COMPLETED" << endl;
+    cout << left << setw(25) << "Payment Date:" << participant.paymentDate << endl;
 
-    int selectedEventIndex = eventChoice - 1;
-    Booking& selectedEvent = bookings[selectedEventIndex];
+    cout << string(70, '-') << endl;
+    cout << "                   PAYMENT SUMMARY" << endl;
+    cout << string(70, '-') << endl;
+    cout << left << setw(25) << "Total Amount Paid:" << "RM " << fixed << setprecision(2) << amountDue << endl;
+    cout << left << setw(25) << "Balance Due:" << "RM 0.00" << endl;
+    cout << left << setw(25) << "Status:" << "PAID IN FULL" << endl;
 
-    cout << "\n" << string(60, '=') << endl;
-    cout << "SELECTED EVENT: " << selectedEvent.eventName << endl;
-    cout << string(60, '=') << endl;
-    cout << "Event Type: " << selectedEvent.eventType << endl;
-    cout << "Venue: " << selectedEvent.venue << endl;
-    cout << "Date & Time: " << selectedEvent.dateTime << endl;
-    cout << "Current Participants: " << selectedEvent.participants.size() << "/" << selectedEvent.guestCount << endl;
-    cout << string(60, '=') << endl;
-
-    if (selectedEvent.participants.empty()) {
-        cout << "\nNo participants registered for this event yet." << endl;
-        cout << "Please add participants first before processing payments." << endl;
-        return;
-    }
-
-    cout << "\nProceeding to payment menu for this event's participants..." << endl;
-    cout << string(60, '-') << endl;
-
-    showPaymentMenu(selectedEvent.participants, bookings);
+    cout << string(70, '=') << endl;
+    cout << "                  THANK YOU FOR YOUR PAYMENT!" << endl;
+    cout << "    This receipt has been sent to: " << userEmail << endl;
+    cout << "       Please keep this receipt for your records." << endl;
+    cout << string(70, '=') << endl << endl;
 }
 
 string getValidInput(const string& title) {
@@ -1328,9 +1815,10 @@ string getValidDateline(const string& title) {
     return input;
 }
 
-Booking createBooking(int id, vector<Booking>& bookings) {
+Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName) {
     Booking b;
     b.eventId = id;
+    b.organizerName = organizerName;
 
     cout << "\n--- Create a New Event Booking ---\n";
     b.eventName = getValidInput("Enter event name: ");
@@ -1370,6 +1858,7 @@ void saveBookings(vector<Booking>& bookings, const string& file) {
         outFile << "Deadline: " << b.deadline << "\n";
         outFile << "Status: " << b.status << "\n";
         outFile << "Guest Limit: " << b.guestCount << "\n";
+        outFile << "Organizer: " << b.organizerName << "\n";
         outFile << string(50, '-') << "\n";
     }
 
@@ -1441,6 +1930,9 @@ void loadBookings(vector<Booking>& bookings, const string& file) {
         else if (line.find("Guest Limit: ") == 0) {
             b.guestCount = stoi(line.substr(13));
         }
+        else if (line.find("Organizer: ") == 0) {
+            b.organizerName = line.substr(11);
+        }
         else if (line.find("--------------------------------------------------") == 0) {
             // Finished one booking entry
             bookings.push_back(b);
@@ -1450,6 +1942,7 @@ void loadBookings(vector<Booking>& bookings, const string& file) {
     inFile.close();
     cout << "Bookings loaded successfully (" << bookings.size() << " events).\n";
 }
+
 
 void loadParticipants(vector<Booking>& bookings, const string& file) {
     ifstream inFile(file);
@@ -1480,7 +1973,8 @@ void loadParticipants(vector<Booking>& bookings, const string& file) {
                     Participant p;
                     size_t idPos = line.find("ID: ") + 4;
                     size_t idEnd = line.find(",", idPos);
-                    p.id = stoi(line.substr(idPos, idEnd - idPos));
+                    p.id = line.substr(idPos, idEnd - idPos);
+
 
                     size_t namePos = line.find("Name: ") + 6;
                     size_t nameEnd = line.find(",", namePos);
@@ -1564,96 +2058,6 @@ void destroyEvent(vector<Booking>& bookings, int eventId, const string& bookFile
     saveParticipants(bookings, partFile);
 }
 
-void showMainMenu(vector<Booking>& bookings) {
-    bool continueMenu = true;
-
-    while (continueMenu) {
-        cout << "Welcome to our Personal Event Booking System" << endl;
-        cout << "------------------------------------------" << endl;
-        cout << "1. Create a new event booking" << endl;
-        cout << "2. Add participants " << endl;
-        cout << "3. View participants " << endl;
-        cout << "4. Make Payment " << endl;
-        cout << "5. Exit" << endl;
-        cout << "Enter your choice (1-5): ";
-
-        string input;
-        getline(cin, input);
-
-        if (input.empty()) {
-            cout << "Error: Please enter a number." << endl;
-            continue;
-        }
-
-        bool isAllDigits = true;
-        for (char ch : input) {
-            if (!isdigit(static_cast<unsigned char>(ch))) {
-                isAllDigits = false;
-                break;
-            }
-        }
-
-        if (!isAllDigits) {
-            cout << "Error: Please enter only numbers (1-5)." << endl;
-            continue;
-        }
-
-        int choice = 0;
-        try {
-            choice = stoi(input);
-        }
-        catch (...) {
-            cout << "Error: Invalid number." << endl;
-            continue;
-        }
-
-        if (choice < 1 || choice > 5) {
-            cout << "Error: Please enter 1-5 only." << endl;
-            continue;
-        }
-
-        switch (choice) {
-        case 1: {
-            cout << "Creating a new event booking" << endl;
-            break;
-        }
-        case 2: {
-            if (bookings.empty()) {
-                cout << "No events available. Please create an event first." << endl;
-            }
-            else {
-                addParticipantsToEvent(bookings);
-            }
-            break;
-        }
-        case 3: {
-            if (bookings.empty()) {
-                cout << "No events available to view." << endl;
-            }
-            else {
-                viewParticipants(bookings);
-            }
-            break;
-        }
-        case 4: {
-            if (bookings.empty()) {
-                cout << "No events available. Please create an event first." << endl;
-            }
-            else {
-                showPaymentMenuForEvents(bookings);
-            }
-            break;
-        }
-        case 5:
-            cout << "Thank you for using our system!" << endl;
-            continueMenu = false;
-            break;
-        }
-
-        cout << endl;
-    }
-}
-
 //Marketing
 string computeStatus(string startDate, string endDate) {
     time_t now = time(0);
@@ -1689,7 +2093,6 @@ void loadAds(vector<EventAd>& ads) {
             prev = pos + 1;
         }
         parts.push_back(line.substr(prev));
-
         if (parts.size() == 4) {
             ad.eventTitle = parts[0];
             ad.marketingText = parts[1];
@@ -1947,75 +2350,6 @@ UserProfile* login(vector<UserProfile>& users, string uname, string pwd) {
     return nullptr;
 }
 
-
-void regAccount(vector<UserProfile>& users) {
-    UserProfile u;
-
-    cout << "Enter username: ";
-    getline(cin, u.username);
-
-    while (usernameExists(users, u.username)) {
-        cout << "Username already exist, please re-enter: ";
-        getline(cin, u.username);
-    }
-
-    do {
-        cout << "Enter password (at least 6 chars, must include digit, uppercase, lowercase): ";
-        getline(cin, u.password);
-    } while (!isStrongPassword(u.password));
-
-    cout << "\nSelect Security Question\n";
-    cout << "1. What is your pet's name?\n";
-    cout << "2. What is your favorite color?\n";
-    cout << "3. What city were you born in?\n";
-    cout << "Your choice: ";
-
-    int qChoice;
-
-    cin >> qChoice;
-    cin.ignore();
-
-    switch (qChoice) {
-    case 1:
-        u.secQ = "What is your pet's name?";
-        break;
-
-    case 2:
-        u.secQ = "What is your favorite color?";
-        break;
-
-    case 3:
-        u.secQ = "What city were you born in?";
-        break;
-
-    default:
-        u.secQ = "What is your pet's name? ";
-        break;
-    }
-
-    cout << "Enter your answer: ";
-    getline(cin, u.secA);
-
-    cout << "Enter your full name: ";
-    getline(cin, u.info.fullName);
-
-    do {
-        cout << "Enter email: ";
-        getline(cin, u.info.email);
-    } while (!isValidEmail(u.info.email));
-
-    do {
-        cout << "Enter phone number: ";
-        getline(cin, u.info.phone);
-    } while (!isValidPhone(u.info.phone));
-
-    u.role = "user";
-    users.push_back(u);
-    cout << "\nAccount created successfully!\n";
-
-    saveUsers(users);
-}
-
 //u forgot password
 void forgotPwd(vector<UserProfile>& users, string uname) {
     for (auto& u : users) {
@@ -2231,12 +2565,38 @@ void manageUsers(vector<UserProfile>& users) {
     } while (choice != 4);
 }
 
-void loginModule(vector<UserProfile>& users) {
+
+void registrationMenu(vector<Booking>& bookings,const string& organizerName) {
+    int choice;
+    do {
+        cout << "\n=== Registration Management ===\n";
+        cout << "1. Add Participants to Event\n";
+        cout << "2. View Participants\n";
+        cout << "4. Back to Main Menu\n";
+        cout << "Choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1:
+                addParticipants(bookings,organizerName);
+                break;
+            case 2:
+                viewParticipants(bookings,organizerName);
+                break;
+            case 3:
+                cout << "Returning to main menu...\n";
+                break;
+        }
+    } while (choice != 4);
+}
+
+void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>&b) {
     int choice;
 
     do {
         cout << "\n=== User/Organizer Login ===\n";
-        cout << "1. Register Account\n";
+        cout << "1. Register New Account\n";
         cout << "2. Login\n";
         cout << "3. Forgot Password\n";
         cout << "4. Exit to Main Menu\n";
@@ -2259,7 +2619,7 @@ void loginModule(vector<UserProfile>& users) {
                 cout << "Login successful! Welcome " << user->info.fullName << "\n";
 
                 if (user->role == "organizer") {
-                    // org menu
+                    string organizerName = user->info.fullName;
                     int orgChoice;
                     do {
                         cout << "\n=== Organizer Menu ===\n";
@@ -2268,8 +2628,9 @@ void loginModule(vector<UserProfile>& users) {
                         cout << "3. Booking Management\n";
                         cout << "4. Marketing Management\n";
                         cout << "5. Registration\n";
-                        cout << "6. Reporting\n";
-                        cout << "7. Logout\n";
+                        cout << "6. Payment Management\n";
+                        cout << "7. Reporting\n";
+                        cout << "8. Logout\n";
                         cout << "Choice: ";
                         cin >> orgChoice;
                         cin.ignore();
@@ -2292,14 +2653,17 @@ void loginModule(vector<UserProfile>& users) {
                             break;
 
                         case 5:
-                            //registration
+                            registrationMenu(b,organizerName);
                             break;
 
-                        case 6:
+                                case 6 :
+                                organizerPaymentMenu(b,organizerName);
+                                break;
+                        case 7:
                             //reporting
                             break;
 
-                        case 7:
+                        case 8:
                             cout << "Logging out...\n";
                             break;
 
@@ -2309,30 +2673,42 @@ void loginModule(vector<UserProfile>& users) {
                     } while (orgChoice != 7);
                 }
                 else {
-                    //u menu
                     int subChoice;
                     do {
                         cout << "\n--- Account Menu ---\n";
-                        cout << "1. Change Password\n";
-                        cout << "2. Update Personal Info\n";
-                        cout << "3. Delete Account\n";
-                        cout << "4. Logout\n";
+                        cout << "1. Join Event\n";
+                        cout << "2. View Joined Event\n";
+                        cout << "3. View Payment\n";
+                        cout << "4. Change Password\n";
+                        cout << "5. Update Personal Info\n";
+                        cout << "6. Delete Account\n";
+                        cout << "7. Logout\n";
                         cout << "Choice: ";
                         cin >> subChoice;
                         cin.ignore();
 
                         if (subChoice == 1) {
-                            changePwd(*user);
-                        }
+                            userJoinEvent(b,*user);
+                       }
                         else if (subChoice == 2) {
-                            updateInfo(*user);
+                            viewJoinedEvents(b,*user);
+
                         }
                         else if (subChoice == 3) {
+                            userViewAndMakePayments(b,*user);
+                        }
+                        else if (subChoice == 4) {
+                            changePwd(*user);
+                        }
+                        else if (subChoice == 5) {
+                            updateInfo(*user);
+                        }
+                        else if (subChoice == 6) {
                             deleteAccount(users, user);
                             break;
                         }
 
-                    } while (subChoice != 4 && user != nullptr);
+                    } while (subChoice != 7 && user != nullptr);
                 }
             }
             else {
@@ -2349,14 +2725,117 @@ void loginModule(vector<UserProfile>& users) {
     } while (choice != 4);
 }
 
+
+
+const int PROBLEM_TITLE = 0;
+const int ORG_PROBLEM = 1;
+const int PROBLEM_RATING = 2;
+
+void startMonitoring(Booking& b) {
+    EventState e = convertBookingToEventState(b);
+
+    bool continueMonitoring = true;
+
+    while (continueMonitoring) {
+        cout << "\n--- Monitoring Event: " << e.booking.eventName << " ---\n";
+        cout << "1. Add Participant review\n";
+        cout << "2. Log Technical Problem\n";
+        cout << "3. Generate Report and Exiting\n";
+        cout << "Enter choice: ";
+
+        string input;
+        getline(cin, input);
+
+        if (input.empty()) {
+            cout << "Error: Please enter a number." << endl;
+            continue;
+        }
+
+        bool isAllDigits = true;
+        for (char ch : input) {
+            if (!isdigit(static_cast<unsigned char>(ch))) {
+                isAllDigits = false;
+                break;
+            }
+        }
+
+        if (!isAllDigits) {
+            cout << "Error: Please enter only numbers (1-3)." << endl;
+            continue;
+        }
+
+        int choice = 0;
+        try {
+            choice = stoi(input);
+        }
+        catch (...) {
+            cout << "Error: Invalid number." << endl;
+            continue;
+        }
+
+        if (choice < 1 || choice > 3) {
+            cout << "Error: Please enter 1-3 only." << endl;
+            continue;
+        }
+
+        switch (choice) {
+        case 1:
+            if (e.review.empty()) {
+                Review r = createComment(e);
+                e.review.push_back(r);
+            }
+            break;
+
+        case 2: {
+            string note, title, ratingInput;
+            int rating = -1;
+
+            cout << "Enter Problem details: ";
+            getline(cin, note);
+
+            cout << "Enter the Title (Food/Technical Problem/Other): ";
+            getline(cin, title);
+
+            cout << "Rate the severity (1 = minor, 10 = critical): ";
+            getline(cin, ratingInput);
+
+            int severity = getValidRating(1, 10);
+
+            for (int i = 0; i < 50; i++) {
+                if (e.quickNote[ORG_PROBLEM][i].empty()) {
+                    e.quickNote[ORG_PROBLEM][i] = note;
+                    e.quickNote[PROBLEM_TITLE][i] = title;
+                    e.quickNote[PROBLEM_RATING][i] = to_string(severity);
+                    break;
+                }
+            }
+            system("cls");
+            printQuickNotes(e);
+            break;
+        }
+        case 3: {
+            generateReport(e);
+            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+            readReport(filename);
+
+            continueMonitoring = false;
+            break;
+        }
+        default:
+            cout << "Invalid option.\n";
+        }
+    }
+
+}
 void monitorEvent(vector<Booking>& bookings) {
     cout << "\n" << string(60, '=') << endl;
     cout << "         EVENT MONITOR" << endl;
     cout << string(60, '=') << endl;
+    size_t i;
 
     cout << "\nAvailable Events for monitor:\n";
     cout << string(60, '-') << endl;
-    for (size_t i = 0; i < bookings.size(); i++) {
+    for ( i = 0; i < bookings.size(); i++) {
         cout << "Event " << (i + 1) << ":" << endl;
         cout << "  Name: " << bookings[i].eventName << endl;
         cout << "  Type: " << bookings[i].eventType << endl;
@@ -2399,15 +2878,17 @@ void monitorEvent(vector<Booking>& bookings) {
     cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
     cout << string(60, '-') << endl;
 
-    if (getValidYesNoChoice("Selected Event?(Y/N):\n") == 'y') {
+    cout << "Selected Event? (Y/N) : " << endl;
+    if (getValidYesNoChoice() == 'y') {
         startMonitoring(selectedEvent);
     }
     else {
         system("cls");
-        showMainMenu();
     }
 
 }
+
+
 
 void printQuickNotes(const EventState& e) {
     struct Row {
@@ -2441,111 +2922,11 @@ void printQuickNotes(const EventState& e) {
     cout << "=====================================\n";
 }
 
-const int PROBLEM_TITLE = 0;
-const int ORG_PROBLEM = 1;
-const int PROBLEM_RATING = 2;
 
 EventState convertBookingToEventState(const Booking& b) {
     EventState e;
     e.booking = b;
     return e;
-}
-
-void startMonitoring(Booking& b) {
-    EventState e = convertBookingToEventState(b);
-
-    bool continueMonitoring = true;
-
-    while (continueMonitoring) {
-        cout << "\n--- Monitoring Event: " << e.booking.eventName << " ---\n";
-        cout << "1. Add Participant review\n";
-        cout << "2. Log Technical Problem\n";
-        cout << "3. Generate Report and Exiting\n";
-        cout << "Enter choice: ";
-
-        string input;
-        getline(cin, input);
-
-        if (input.empty()) {
-            cout << "Error: Please enter a number." << endl;
-            continue;
-        }
-
-        bool isAllDigits = true;
-        for (char ch : input) {
-            if (!isdigit(static_cast<unsigned char>(ch))) {
-                isAllDigits = false;
-                break;
-            }   
-        }
-
-        if (!isAllDigits) {
-            cout << "Error: Please enter only numbers (1-3)." << endl;
-            continue;
-        }
-
-        int choice = 0;
-        try {
-            choice = stoi(input);
-        }
-        catch (...) {
-            cout << "Error: Invalid number." << endl;
-            continue;
-        }
-
-        if (choice < 1 || choice > 3) {
-            cout << "Error: Please enter 1-3 only." << endl;
-            continue;
-        }
-
-        switch (choice) {
-        case 1:
-            if (e.review.empty()) {
-                Review r = createComment(e);
-                e.review.push_back(r);
-            }
-            break;
-
-        case 2:
-            string note, title, ratingInput;
-            int rating = -1;
-
-            cout << "Enter Problem details: ";
-            getline(cin, note);
-
-            cout << "Enter the Title (Food/Technical Problem/Other): ";
-            getline(cin, title);
-
-            cout << "Rate the severity (1 = minor, 10 = critical): ";
-            getline(cin, ratingInput);
-
-            int severity = getValidRating(1, 10);
-
-            for (int i = 0; i < 50; i++) {
-                if (e.quickNote[ORG_PROBLEM][i].empty()) {
-                    e.quickNote[ORG_PROBLEM][i] = note;
-                    e.quickNote[PROBLEM_TITLE][i] = title;
-                    e.quickNote[PROBLEM_RATING][i] = to_string(severity);
-                    break;
-                }
-            }
-            system("cls");
-            printQuickNotes(e);
-            break;
-        case 3:
-
-            generateReport(e);
-            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
-            readReport(filename);
-
-            continueMonitoring = false;
-            break;
-        default:
-            cout << "Invalid option.\n";
-        }
-    }
-    showMainMenu(b);
-    
 }
 
 
@@ -2649,7 +3030,7 @@ void generateReport(EventState e) {
     }
     else {
         for (const auto& p : e.booking.participants) {
-            writeBoth("  ID: " + to_string(p.id) + " | Name: " + p.name + " | Role: " + p.role);
+            writeBoth("  ID: " + p.id + " | Name: " + p.name + " | Role: " + p.role);
             writeBoth("     Amount Due: " + to_string(p.amountDue) +
                 " | Paid: " + (p.paid ? "Yes" : "No") +
                 " | Method: " + p.paymentMethod +
@@ -2720,18 +3101,19 @@ void readReport(const string& filename) {
 int main() {
 
     vector<UserProfile> users;
+    vector<Booking> bookings;
+    vector<EventAd> ads;
+
     loadUsers(users);
     createDefaultOrg(users);
-    loginModule(users);
     saveUsers(users);
 
-    vector<Booking> bookings;
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
     checkDeadlines(bookings);
-    showMainMenu(bookings);
-    
-    vector<EventAd> ads;
+
+    loginModule(users,ads,bookings);
+
     loadAds(ads);
     marketingModule(ads);
     saveAds(ads);
