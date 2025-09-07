@@ -2231,7 +2231,7 @@ void manageUsers(vector<UserProfile>& users) {
     } while (choice != 4);
 }
 
-void loginModule(vector<UserProfile>& users) {
+void loginModule(vector<UserProfile>& users,vector<EventAd> ads) {
     int choice;
 
     do {
@@ -2730,7 +2730,7 @@ int main() {
     loadParticipants(bookings, "participants.txt");
     checkDeadlines(bookings);
     showMainMenu(bookings);
-    
+
     vector<EventAd> ads;
     loadAds(ads);
     marketingModule(ads);
