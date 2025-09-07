@@ -1,0 +1,2 @@
+Admin|Admin123|Default|Default|organizer|System Organizer|organizer@gmail.com|+60123456789
+organizer|Admin123|Default|Default|organizer|System Organizer|organizer@gmail.com|+60123456789
