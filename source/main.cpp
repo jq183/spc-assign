@@ -18,7 +18,7 @@ Payment Module - Complete
 Registration Module -Complete
 (Zetton)
 Booking Module - Complete
-Reminder Module
+Reminder Module - Complete
 (Heng Mien)
 Marketing Module
 User/Login Module
@@ -3101,6 +3101,108 @@ void readReport(const string& filename) {
 
     inFile.close();
 }
+
+time_t stringToDateTime(const string &dateTime) {
+    tm t = {};
+    int year, month, day, hour, minute;
+    if (sscanf(dateTime.c_str(), "%d-%d-%d %d:%d",
+               &year, &month, &day, &hour, &minute) != 5) {
+        cerr << "Invalid dateTime format: " << dateTime << endl;
+        return -1;
+    }
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = 0;
+    return mktime(&t);
+}
+
+time_t stringToDate(const string &dateStr) {
+    tm t = {};
+    int year, month, day;
+    if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
+        cerr << "Invalid deadline format: " << dateStr << endl;
+        return -1;
+    }
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = 0;
+    t.tm_min = 0;
+    t.tm_sec = 0;
+    return mktime(&t);
+}
+
+string formatTimeHHMM(time_t t) {
+    tm *lt = localtime(&t);
+    ostringstream out;
+    out << setw(2) << setfill('0') << lt->tm_hour << ":"
+        << setw(2) << setfill('0') << lt->tm_min;
+    return out.str();
+}
+
+string formatDateYMD(time_t t) {
+    tm *lt = localtime(&t);
+    ostringstream out;
+    out << (lt->tm_year + 1900) << "/"
+        << setw(2) << setfill('0') << (lt->tm_mon + 1) << "/"
+        << setw(2) << setfill('0') << lt->tm_mday;
+    return out.str();
+}
+
+void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message) {
+    string command = "schtasks /create /sc once /tn \"" + taskName +
+                     "\" /tr \"cmd /c msg * " + message +
+                     "\" /st " + time + " /sd " + date + " /f";
+
+    int result = system(command.c_str());
+
+    if (result == 0) {
+        cout << "Reminder scheduled: " << taskName << " at " << date << " " << time << endl;
+    } else {
+        cerr << "Failed to schedule reminder!" << endl;
+    }
+}
+
+void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder jst call this and it will set all reminders
+    time_t deadlineTime = stringToDate(b.deadline);
+    if (deadlineTime != -1) {
+        string timeStr = "09:00";
+        string dateStr = formatDateYMD(deadlineTime);
+
+        string taskName = "DeadlineReminder_" + to_string(b.eventId);
+        string message = "\"Reminder: Registration deadline for " + b.eventName + " is today!\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+
+    time_t eventTime = stringToDateTime(b.dateTime);
+    if (eventTime != -1) {
+        time_t reminderTime = eventTime - (minutesBefore * 60); //60 is changeable
+        string timeStr = formatTimeHHMM(reminderTime);
+        string dateStr = formatDateYMD(reminderTime);
+
+        string taskName = "EventReminder_" + to_string(b.eventId);
+        string message = "\"Reminder: Event " + b.eventName +
+                         " starts in " + to_string(minutesBefore) + " minutes!\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+
+    if (b.status == "Closed") {
+        time_t now = time(0);
+        string timeStr = formatTimeHHMM(now + 60);
+        string dateStr = formatDateYMD(now);
+
+        string taskName = "ClosedReminder_" + to_string(b.eventId);
+        string message = "\"Notice: Event " + b.eventName + " is now CLOSED.\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+}
+
 int main() {
 
     vector<UserProfile> users;
