@@ -3177,24 +3177,90 @@ string formatDateYMD(time_t t) {
     return out.str();
 }
 
+
+static string sanitizeMessageForBatch(const string &msg) {
+    string out;
+    out.reserve(msg.size());
+    for (char c : msg) {
+        if (c == '"') out.push_back('\'');
+        else if (c == '%') out += "%%";
+        else if (c == '\r' || c == '\n') out.push_back(' ');
+        else out.push_back(c);
+    }
+    return out;
+}
+
+// get directory
+static string getTempDir() {
+    const char *tmp = getenv("TEMP");
+    if (!tmp) tmp = getenv("TMP");
+    if (!tmp) return string("."); // fallback
+    return string(tmp);
+}
+
+// create a batch file that runs: msg * "message"
+static string createReminderBatch(const string &taskName, const string &message) {
+    string tmpdir = getTempDir();
+    // set file name to avoid collision
+    time_t t = time(nullptr);
+    string fname = tmpdir + "\\reminder_" + taskName + "_" + to_string((long long)t) + ".bat";
+
+    ofstream out(fname.c_str(), ios::binary);
+    if (!out) {
+        cerr << "Failed to create batch file: " << fname << endl;
+        return "";
+    }
+
+    string safeMsg = sanitizeMessageForBatch(message);
+
+    out << "@echo off\r\n";
+    out << "msg * \"" << safeMsg << "\"\r\n";
+    out << "exit /b 0\r\n";
+    out.close();
+
+    return fname;
+}
+
+string convertToSchtasksDate(const string &date) {
+    int y, m, d;
+    if (sscanf(date.c_str(), "%d%*[-/]%d%*[-/]%d", &y, &m, &d) != 3) {
+        cerr << "Invalid date format: " << date << endl;
+        return "01/01/2000"; // fallback
+    }
+
+    char buffer[11];
+    sprintf(buffer, "%02d/%02d/%04d", d, m, y);
+    return string(buffer);
+}
+
 void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message) {
-    string safeMessage = "\""+ message + "\"";
+
+    string schtasksDate = convertToSchtasksDate(date);
+
+    string batchPath = createReminderBatch(taskName, message);
+    if (batchPath.empty()) {
+        cerr << "Could not create reminder batch file." << endl;
+        return;
+    }
+
+    string quotedPath = "\"" + batchPath + "\"";
 
     string command = "schtasks /create /sc once /tn \"" + taskName +
-                     "\" /tr \"cmd /c msg * " + safeMessage +
-                     "\" /st " + time + " /sd " + date + " /f";
+                     "\" /tr " + quotedPath +
+                     " /st " + time + " /sd " + schtasksDate + " /f";
+
+    cout << "Command: " << command << endl;
 
     int result = system(command.c_str());
-
     if (result == 0) {
-        cout << "Reminder scheduled: " << taskName << " at " << date << " " << time << endl;
+        cout << "Reminder scheduled: " << taskName
+             << " at " << schtasksDate << " " << time << endl;
     } else {
-        cerr << "Failed to schedule reminder!" << endl;
-        cerr << "Command: " << command << endl; //for debugging
+        cerr << "Failed to schedule reminder! (exit=" << result << ")" << endl;
     }
 }
 
-void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder jst call this and it will set all reminders
+void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder just call this, and it will set all reminders
     time_t deadlineTime = stringToDate(b.deadline);
     if (deadlineTime != -1) {
         string timeStr = "09:00";
