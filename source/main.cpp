@@ -2259,7 +2259,7 @@ void marketingModule(vector<EventAd>& ads) {
 }
 
 
-//User/Login
+//UserLogin
 string normalize(string s) {
     string result;
     for (char c : s) {
@@ -2679,10 +2679,11 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                         cout << "1. Join Event\n";
                         cout << "2. View Joined Event\n";
                         cout << "3. View Payment\n";
-                        cout << "4. Change Password\n";
-                        cout << "5. Update Personal Info\n";
-                        cout << "6. Delete Account\n";
-                        cout << "7. Logout\n";
+                        cout << "4. View Advertisement\n";
+                        cout << "5. Change Password\n";
+                        cout << "6. Update Personal Info\n";
+                        cout << "7. Delete Account\n";
+                        cout << "8. Logout\n";
                         cout << "Choice: ";
                         cin >> subChoice;
                         cin.ignore();
@@ -2692,23 +2693,25 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                        }
                         else if (subChoice == 2) {
                             viewJoinedEvents(b,*user);
-
                         }
                         else if (subChoice == 3) {
                             userViewAndMakePayments(b,*user);
                         }
-                        else if (subChoice == 4) {
-                            changePwd(*user);
+                        else if(subChoice == 4){
+                            showAllAds(ads);
                         }
                         else if (subChoice == 5) {
-                            updateInfo(*user);
+                            changePwd(*user);
                         }
                         else if (subChoice == 6) {
+                            updateInfo(*user);
+                        }
+                        else if (subChoice == 7) {
                             deleteAccount(users, user);
                             break;
                         }
 
-                    } while (subChoice != 7 && user != nullptr);
+                    } while (subChoice != 8 && user != nullptr);
                 }
             }
             else {
