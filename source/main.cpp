@@ -3178,8 +3178,10 @@ string formatDateYMD(time_t t) {
 }
 
 void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message) {
+    string safeMessage = "\""+ message + "\"";
+
     string command = "schtasks /create /sc once /tn \"" + taskName +
-                     "\" /tr \"cmd /c msg * " + message +
+                     "\" /tr \"cmd /c msg * " + safeMessage +
                      "\" /st " + time + " /sd " + date + " /f";
 
     int result = system(command.c_str());
@@ -3188,6 +3190,7 @@ void scheduleReminder(const string &taskName, const string &date, const string &
         cout << "Reminder scheduled: " << taskName << " at " << date << " " << time << endl;
     } else {
         cerr << "Failed to schedule reminder!" << endl;
+        cerr << "Command: " << command << endl; //for debugging
     }
 }
 
