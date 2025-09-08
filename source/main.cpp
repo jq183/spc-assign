@@ -252,11 +252,11 @@ char getValidYesNoChoice() {
 
         getline(cin, input);
         if (input.empty()) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
+            cout << "Error: Please enter 'y' or 'n' only:" ;
             continue;
         }
         else if (input.length() > 1) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
+            cout << "Error: Please enter 'y' or 'n' only:" ;
             continue;
         }
         else {
@@ -266,7 +266,7 @@ char getValidYesNoChoice() {
                 return choice;
             }
             else {
-                cout << "Error: Please enter 'y' or 'n' only." << endl;
+                cout << "Error: Please enter 'y' or 'n' only:" ;
             }
         }
     } while (!isValidChoice);
@@ -473,6 +473,15 @@ string getCurrentDate() {
     return string(buffer);
 }
 
+bool isInEvent(const Booking& event, const string& participantName) {
+    for (const auto& participant : event.participants) {
+        if (participant.name == participantName) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void addParticipants(vector<Booking>& bookings, const string& organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           ADD PARTICIPANTS TO EVENT" << endl;
@@ -547,6 +556,15 @@ void addParticipants(vector<Booking>& bookings, const string& organizerName) {
         Participant ptcp;
         cout << "Enter participant name: ";
         ptcp.name = getValidName();
+
+        if (isInEvent(selectedEvent, ptcp.name)) {
+            cout << "\nError: " << ptcp.name << " is already registered for this event!" << endl;
+            cout << "Cannot add duplicate participants to the same event." << endl;
+
+            cout << "Continue adding other participants? (y/n): ";
+            continueAdding = getValidYesNoChoice();
+            continue;
+        }
 
         ptcp.role = "Customer";
 
@@ -688,38 +706,53 @@ void regAccount(vector<UserProfile>& users) {
     saveUsers(users);
 }
 
-void viewParticipants(const vector<Booking>& bookings,const string&organizerName) {
+void viewParticipants(const vector<Booking>& bookings, const string& organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           VIEW PARTICIPANTS" << endl;
     cout << string(60, '=') << endl;
 
+    vector<int> organizerEventIndices;
+
     cout << "\nAvailable Events to View Participants:\n";
     cout << string(60, '-') << endl;
-    int count = 0;
+
     for (size_t i = 0; i < bookings.size(); i++) {
         if (bookings[i].organizerName == organizerName) {
-            count++;
-            cout << "Event " << (i + 1) << ":" << endl;
-            cout << "  Name: " << bookings[i].eventName << endl;
-            cout << "  Type: " << bookings[i].eventType << endl;
-            cout << "  Venue: " << bookings[i].venue << endl;
-            cout << "  Date & Time: " << bookings[i].dateTime << endl;
-            cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
-            cout << string(60, '-') << endl;
+            organizerEventIndices.push_back(i);
         }
+    }
+
+    if (organizerEventIndices.empty()) {
+        cout << "No events found for organizer: " << organizerName << endl;
+        return;
+    }
+
+    for (size_t j = 0; j < organizerEventIndices.size(); j++) {
+        int eventIndex = organizerEventIndices[j];
+        cout << "Event " << (j + 1) << ":" << endl;  // 使用连续编号
+        cout << "  Name: " << bookings[eventIndex].eventName << endl;
+        cout << "  Type: " << bookings[eventIndex].eventType << endl;
+        cout << "  Venue: " << bookings[eventIndex].venue << endl;
+        cout << "  Date & Time: " << bookings[eventIndex].dateTime << endl;
+        cout << "  Current Participants: " << bookings[eventIndex].participants.size()
+             << "/" << bookings[eventIndex].guestCount << endl;
+        cout << string(60, '-') << endl;
     }
 
     int eventChoice;
     cout << "Select an event to view participants" << endl;
     cout << "--------------------------------" << endl;
-    cout << "Enter event number (1-" << count << "): ";
+    cout << "Enter event number (1-" << organizerEventIndices.size() << "): ";
+
     string input;
     getline(cin, input);
 
     try {
         eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(bookings.size())) {
-            cout << "Invalid event selection." << endl;
+
+        if (eventChoice < 1 || eventChoice > static_cast<int>(organizerEventIndices.size())) {
+            cout << "Invalid event selection. Please enter a number between 1 and "
+                 << organizerEventIndices.size() << "." << endl;
             return;
         }
     }
@@ -728,7 +761,7 @@ void viewParticipants(const vector<Booking>& bookings,const string&organizerName
         return;
     }
 
-    int selectedEventIndex = eventChoice - 1;
+    int selectedEventIndex = organizerEventIndices[eventChoice - 1];
     const Booking& selectedEvent = bookings[selectedEventIndex];
 
     cout << "\n--- Participants for " << selectedEvent.eventName << " ---\n";
@@ -743,7 +776,8 @@ void viewParticipants(const vector<Booking>& bookings,const string&organizerName
         cout << "No participants registered yet." << endl;
     }
     else {
-        cout << "Registered Participants (" << selectedEvent.participants.size() << "/" << selectedEvent.guestCount << "):\n";
+        cout << "Registered Participants (" << selectedEvent.participants.size()
+             << "/" << selectedEvent.guestCount << "):\n";
         for (size_t i = 0; i < selectedEvent.participants.size(); i++) {
             cout << i + 1 << ". " << selectedEvent.participants[i].name
                 << " (ID: " << selectedEvent.participants[i].id << ")"
@@ -1394,7 +1428,7 @@ void viewAllPaymentsSummary( vector<Booking>& b,const string& organizerName) {
     cout << string(70, '=') << endl;
 }
 
-void processIndividualPayment(vector<Booking>& bookings,const string& organizerName) {
+void processIndividualPayment(vector<Booking>& bookings, const string& organizerName) {
     vector<pair<int, int>> allParticipants;
 
     cout << "\n" << string(60, '=') << endl;
@@ -1442,7 +1476,13 @@ void processIndividualPayment(vector<Booking>& bookings,const string& organizerN
         int bookingIdx = allParticipants[selection - 1].first;
         int participantIdx = allParticipants[selection - 1].second;
 
-        processPaymentTransaction(bookings[bookingIdx].participants[participantIdx],bookings[bookingIdx]);
+        Participant& participant = bookings[bookingIdx].participants[participantIdx];
+        if (participant.email.empty()) {
+            cout << "\nParticipant email required for receipt generation." << endl;
+            participant.email = getValidEmail();
+        }
+
+        processPaymentTransaction(participant, bookings[bookingIdx]);
 
         saveBookings(bookings, "bookings.txt");
         saveParticipants(bookings, "participants.txt");
@@ -2102,9 +2142,19 @@ Booking createBooking(int id, vector<Booking>& bookings, const string& organizer
     cin.ignore();
 
     b.status = "Open";
+    Participant hostParticipant;
+    hostParticipant.name = organizerName;
+    hostParticipant.role = "Host";
+    hostParticipant.id = generateParticipantId(b, organizerName, 0);
+    hostParticipant.amountDue = 100;
+    hostParticipant.paid = false;
+    hostParticipant.paymentDate = getCurrentDate();
+    hostParticipant.email = "";
+    b.participants.push_back(hostParticipant);
     bookings.push_back(b);
 
     saveBookings(bookings, "bookings.txt");
+    saveParticipants(bookings,"participants.txt");
 
     return b;
 }
