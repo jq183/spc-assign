@@ -141,6 +141,7 @@ void checkDeadlines(vector<Booking>& bookings);
 void destroyEvent(vector<Booking>& bookings, int eventId, const string& bookFile, const string& partFile);
 
 //Reminder
+void addBookingReminders(const Booking &b, int minutesBefore) ;
 
 //Marketing
 string computeStatus(string startDate, string endDate);
@@ -920,20 +921,13 @@ void userProcessPayment(Participant& participant,const Booking& selectedEvent) {
 }
 
 vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName) {
-    cout << "DEBUG: Looking for organizer: '" << organizerName << "'" << endl;
-    cout << "DEBUG: Total bookings: " << b.size() << endl;
 
     vector<Booking> organizerEvents;
     for (size_t i = 0; i < b.size(); i++) {
-        cout << "DEBUG: Booking " << i << " organizer: '" << b[i].organizerName << "'" << endl;
-        cout << "DEBUG: Event name: '" << b[i].eventName << "'" << endl;
-        cout << "DEBUG: String comparison result: " << (b[i].organizerName == organizerName) << endl;
-
         if (b[i].organizerName == organizerName) {
             organizerEvents.push_back(b[i]);
         }
     }
-    cout << "DEBUG: Found " << organizerEvents.size() << " events" << endl;
     return organizerEvents;
 }
 
@@ -1019,6 +1013,40 @@ void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
     cout << "\nSuccessfully joined the event!" << endl;
     cout << "Your Participant ID: " << participant.id << endl;
     cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+
+    cout << "\nDo you want to set up event reminders? (y/n): ";
+    if (getValidYesNoChoice() == 'y') {
+        cout << "\nReminder Options:" << endl;
+        cout << "1. 15 minutes before event" << endl;
+        cout << "2. 30 minutes before event" << endl;
+        cout << "3. 1 hour before event" << endl;
+        cout << "4. 2 hours before event" << endl;
+        cout << "Enter choice (1-4): ";
+
+        string reminderInput;
+        getline(cin, reminderInput);
+
+        int minutes = 30; // default
+        try {
+            int choice = stoi(reminderInput);
+            switch(choice) {
+                case 1: minutes = 15; break;
+                case 2: minutes = 30; break;
+                case 3: minutes = 60; break;
+                case 4: minutes = 120; break;
+                default:
+                    cout << "Invalid choice, using default (30 minutes)." << endl;
+                    minutes = 30;
+                    break;
+            }
+        } catch (...) {
+            cout << "Invalid input, using default (30 minutes)." << endl;
+            minutes = 30;
+        }
+
+        addBookingReminders(selectedEvent, minutes);
+        cout << "Reminder set for " << minutes << " minutes before the event!" << endl;
+    }
 
     cout << "\nWould you like to pay now? (y/n): ";
     if (getValidYesNoChoice() == 'y') {
@@ -2295,14 +2323,14 @@ bool isValidPhone(string phone) {
 void saveUsers(vector<UserProfile>& users) {
     ofstream fout("users.txt");
     for (auto& u : users) {
-        fout << u.username << "|" 
-            << u.password << "|" 
-            << u.secQ << "|" 
-            << u.secA << "|" 
-            << u.role << "|" 
-            << u.info.fullName 
-            << "|" << u.info.email 
-            << "|" << u.info.phone 
+        fout << u.username << "|"
+            << u.password << "|"
+            << u.secQ << "|"
+            << u.secA << "|"
+            << u.role << "|"
+            << u.info.fullName
+            << "|" << u.info.email
+            << "|" << u.info.phone
             << endl;
     }
     fout.close();
@@ -3152,21 +3180,90 @@ string formatDateYMD(time_t t) {
     return out.str();
 }
 
+
+static string sanitizeMessageForBatch(const string &msg) {
+    string out;
+    out.reserve(msg.size());
+    for (char c : msg) {
+        if (c == '"') out.push_back('\'');
+        else if (c == '%') out += "%%";
+        else if (c == '\r' || c == '\n') out.push_back(' ');
+        else out.push_back(c);
+    }
+    return out;
+}
+
+// get directory
+static string getTempDir() {
+    const char *tmp = getenv("TEMP");
+    if (!tmp) tmp = getenv("TMP");
+    if (!tmp) return string("."); // fallback
+    return string(tmp);
+}
+
+// create a batch file that runs: msg * "message"
+static string createReminderBatch(const string &taskName, const string &message) {
+    string tmpdir = getTempDir();
+    // set file name to avoid collision
+    time_t t = time(nullptr);
+    string fname = tmpdir + "\\reminder_" + taskName + "_" + to_string((long long)t) + ".bat";
+
+    ofstream out(fname.c_str(), ios::binary);
+    if (!out) {
+        cerr << "Failed to create batch file: " << fname << endl;
+        return "";
+    }
+
+    string safeMsg = sanitizeMessageForBatch(message);
+
+    out << "@echo off\r\n";
+    out << "msg * \"" << safeMsg << "\"\r\n";
+    out << "exit /b 0\r\n";
+    out.close();
+
+    return fname;
+}
+
+string convertToSchtasksDate(const string &date) {
+    int y, m, d;
+    if (sscanf(date.c_str(), "%d%*[-/]%d%*[-/]%d", &y, &m, &d) != 3) {
+        cerr << "Invalid date format: " << date << endl;
+        return "01/01/2000"; // fallback
+    }
+
+    char buffer[11];
+    sprintf(buffer, "%02d/%02d/%04d", d, m, y);
+    return string(buffer);
+}
+
 void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message) {
+
+    string schtasksDate = convertToSchtasksDate(date);
+
+    string batchPath = createReminderBatch(taskName, message);
+    if (batchPath.empty()) {
+        cerr << "Could not create reminder batch file." << endl;
+        return;
+    }
+
+    string quotedPath = "\"" + batchPath + "\"";
+
     string command = "schtasks /create /sc once /tn \"" + taskName +
-                     "\" /tr \"cmd /c msg * " + message +
-                     "\" /st " + time + " /sd " + date + " /f";
+                     "\" /tr " + quotedPath +
+                     " /st " + time + " /sd " + schtasksDate + " /f";
+
+    cout << "Command: " << command << endl;
 
     int result = system(command.c_str());
-
     if (result == 0) {
-        cout << "Reminder scheduled: " << taskName << " at " << date << " " << time << endl;
+        cout << "Reminder scheduled: " << taskName
+             << " at " << schtasksDate << " " << time << endl;
     } else {
-        cerr << "Failed to schedule reminder!" << endl;
+        cerr << "Failed to schedule reminder! (exit=" << result << ")" << endl;
     }
 }
 
-void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder jst call this and it will set all reminders
+void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder just call this, and it will set all reminders
     time_t deadlineTime = stringToDate(b.deadline);
     if (deadlineTime != -1) {
         string timeStr = "09:00";
@@ -3202,6 +3299,7 @@ void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set
         scheduleReminder(taskName, dateStr, timeStr, message);
     }
 }
+
 
 int main() {
 
