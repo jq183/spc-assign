@@ -1,0 +1,13 @@
+Admin|Admin123|Default|Default|organizer|System Organizer|organizer@gmail.com|+60123456789
+organizer|Admin123|Default|Default|organizer|System Organizer|organizer@gmail.com|+60123456789
+john_smith|Password123|What is your pet's name?|buddy|organizer|John Smith|john@gmail.com|+601234567890
+jane_doe|Secret123|What is your favorite color?|blue|organizer|Jane Doe|jane@gmail.com|+601987654321
+alice_j|Alice123|What city were you born in?|kuala lumpur|user|Alice Johnson|alice@gmail.com|+601111111111
+bob_w|Bob123|What is your pet's name?|charlie|user|Bob Wilson|bob@gmail.com|+602222222222
+carol_b|Carol123|What is your favorite color?|red|user|Carol Brown|carol@gmail.com|+603333333333
+david_l|David123|What city were you born in?|penang|user|David Lee|david@gmail.com|+604444444444
+emily_d|Emily123|What is your pet's name?|fluffy|user|Emily Davis|emily@gmail.com|+605555555555
+frank_m|Frank123|What is your favorite color?|green|user|Frank Miller|frank@gmail.com|+606666666666
+qwerty|Qwe123|What is your favorite color?|qwe|user|Qwerty|qwerty@gmail.com|0123456789
+abcd|Abcd123|What city were you born in?|qq|user|abcd|abcd@gmail.com|012345678
+1234|1234Abc|What is your favorite color?|123|user|1234|123@gmail.com|123456789
