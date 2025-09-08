@@ -3163,7 +3163,7 @@ void scheduleReminder(const string &taskName, const string &date, const string &
     }
 }
 
-void addBookingReminders(const Booking &b, int minutesBefore) {
+void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder jst call this and it will set all reminders
     time_t deadlineTime = stringToDate(b.deadline);
     if (deadlineTime != -1) {
         string timeStr = "09:00";
