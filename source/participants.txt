@@ -65,5 +65,5 @@ Participants:
 Event ID: 9
 Event Name: 123
 Participants:
-  - ID: 9JOH1, Name: John Smith, Role: Host, Amount Due: 100, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 9JOH1, Name: John Smith, Role: Host/Vendor, Amount Due: 100, Paid: No, Payment Method: N/A, Payment Date: N/A
 ------------------------------

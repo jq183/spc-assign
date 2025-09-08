@@ -2144,7 +2144,7 @@ Booking createBooking(int id, vector<Booking>& bookings, const string& organizer
     b.status = "Open";
     Participant hostParticipant;
     hostParticipant.name = organizerName;
-    hostParticipant.role = "Host";
+    hostParticipant.role = "Host/Vendor";
     hostParticipant.id = generateParticipantId(b, organizerName, 0);
     hostParticipant.amountDue = 100;
     hostParticipant.paid = false;
