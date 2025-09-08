@@ -141,6 +141,7 @@ void checkDeadlines(vector<Booking>& bookings);
 void destroyEvent(vector<Booking>& bookings, int eventId, const string& bookFile, const string& partFile);
 
 //Reminder
+void addBookingReminders(const Booking &b, int minutesBefore) ;
 
 //Marketing
 string computeStatus(string startDate, string endDate);
@@ -920,20 +921,13 @@ void userProcessPayment(Participant& participant,const Booking& selectedEvent) {
 }
 
 vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName) {
-    cout << "DEBUG: Looking for organizer: '" << organizerName << "'" << endl;
-    cout << "DEBUG: Total bookings: " << b.size() << endl;
 
     vector<Booking> organizerEvents;
     for (size_t i = 0; i < b.size(); i++) {
-        cout << "DEBUG: Booking " << i << " organizer: '" << b[i].organizerName << "'" << endl;
-        cout << "DEBUG: Event name: '" << b[i].eventName << "'" << endl;
-        cout << "DEBUG: String comparison result: " << (b[i].organizerName == organizerName) << endl;
-
         if (b[i].organizerName == organizerName) {
             organizerEvents.push_back(b[i]);
         }
     }
-    cout << "DEBUG: Found " << organizerEvents.size() << " events" << endl;
     return organizerEvents;
 }
 
@@ -1019,6 +1013,40 @@ void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
     cout << "\nSuccessfully joined the event!" << endl;
     cout << "Your Participant ID: " << participant.id << endl;
     cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+
+    cout << "\nDo you want to set up event reminders? (y/n): ";
+    if (getValidYesNoChoice() == 'y') {
+        cout << "\nReminder Options:" << endl;
+        cout << "1. 15 minutes before event" << endl;
+        cout << "2. 30 minutes before event" << endl;
+        cout << "3. 1 hour before event" << endl;
+        cout << "4. 2 hours before event" << endl;
+        cout << "Enter choice (1-4): ";
+
+        string reminderInput;
+        getline(cin, reminderInput);
+
+        int minutes = 30; // default
+        try {
+            int choice = stoi(reminderInput);
+            switch(choice) {
+                case 1: minutes = 15; break;
+                case 2: minutes = 30; break;
+                case 3: minutes = 60; break;
+                case 4: minutes = 120; break;
+                default:
+                    cout << "Invalid choice, using default (30 minutes)." << endl;
+                    minutes = 30;
+                    break;
+            }
+        } catch (...) {
+            cout << "Invalid input, using default (30 minutes)." << endl;
+            minutes = 30;
+        }
+
+        addBookingReminders(selectedEvent, minutes);
+        cout << "Reminder set for " << minutes << " minutes before the event!" << endl;
+    }
 
     cout << "\nWould you like to pay now? (y/n): ";
     if (getValidYesNoChoice() == 'y') {
@@ -2295,14 +2323,14 @@ bool isValidPhone(string phone) {
 void saveUsers(vector<UserProfile>& users) {
     ofstream fout("users.txt");
     for (auto& u : users) {
-        fout << u.username << "|" 
-            << u.password << "|" 
-            << u.secQ << "|" 
-            << u.secA << "|" 
-            << u.role << "|" 
-            << u.info.fullName 
-            << "|" << u.info.email 
-            << "|" << u.info.phone 
+        fout << u.username << "|"
+            << u.password << "|"
+            << u.secQ << "|"
+            << u.secA << "|"
+            << u.role << "|"
+            << u.info.fullName
+            << "|" << u.info.email
+            << "|" << u.info.phone
             << endl;
     }
     fout.close();
@@ -3199,6 +3227,7 @@ void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set
         scheduleReminder(taskName, dateStr, timeStr, message);
     }
 }
+
 
 int main() {
 

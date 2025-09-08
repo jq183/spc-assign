@@ -9,6 +9,7 @@ Participants:
   - ID: TEC1ABC6, Name: abcd, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-08
   - ID: TEC1FRA7, Name: Frank Miller, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-08
   - ID: TEC18, Name: 1234, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-08
+  - ID: TEC1ASD9, Name: asdfg, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
 ------------------------------
 Event ID: 2
 Event Name: Wedding Reception
@@ -17,6 +18,7 @@ Participants:
   - ID: WED2FRA2, Name: Frank Miller, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2024-12-19
   - ID: WED2GRA3, Name: Grace Chen, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: Bulk Processing, Payment Date: 2024-12-20
   - ID: WED2QWE4, Name: qwerty, Role: Guest, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: WED2DR5, Name: dr, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
 ------------------------------
 Event ID: 3
 Event Name: Birthday Party
@@ -26,6 +28,7 @@ Participants:
   - ID: BIR3BOB3, Name: Bob Wilson, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2024-12-22
   - ID: BIR3QWE4, Name: Qwerty, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-08
   - ID: BIR3ABC5, Name: abcd, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-08
+  - ID: BIR3ASD6, Name: asdfg, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
 ------------------------------
 Event ID: 4
 Event Name: Corporate Training
