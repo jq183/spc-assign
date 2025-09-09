@@ -1979,6 +1979,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
             int newId = bookings.empty() ? 1 : bookings.back().eventId + 1;
             Booking newBooking = createBooking(newId, bookings, organizerName);
             cout << "Booking created successfully with ID " << newBooking.eventId << ".\n";
+
+            // Organizer reminder
+            int rChoice;
+            cout << "\nReminder Options:\n";
+            cout << "1. 15 minutes before event\n";
+            cout << "2. 30 minutes before event\n";
+            cout << "3. 1 hour before event\n";
+            cout << "4. 2 hours before event\n";
+            cout << "5. Skip reminder\n";
+            cout << "Enter choice (1-5): ";
+            cin >> rChoice;
+            cin.ignore();
+
+            int offset = -1;
+            if (rChoice == 1) offset = 15;
+            else if (rChoice == 2) offset = 30;
+            else if (rChoice == 3) offset = 60;
+            else if (rChoice == 4) offset = 120;
+
+            if (offset > 0) {
+                addBookingReminders(newBooking, offset);
+            }
+
             break;
         }
         case 2: {
@@ -2016,36 +2039,9 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                     found = true;
                     cout << "Editing booking: " << bookings[i].eventName << "\n";
 
-                    while (true) {
-                        string input = getValidInput("Enter new event name: ");
-                        if (!input.empty()) {
-                            bookings[i].eventName = input;
-                            break;
-                        } else {
-                            cout << "Event name cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new event type: ");
-                        if (!input.empty()) {
-                            bookings[i].eventType = input;
-                            break;
-                        } else {
-                            cout << "Event type cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new venue: ");
-                        if (!input.empty()) {
-                            bookings[i].venue = input;
-                            break;
-                        } else {
-                            cout << "Venue cannot be empty. Try again.\n";
-                        }
-                    }
-
+                    bookings[i].eventName = getValidInput("Enter new event name: ");
+                    bookings[i].eventType = getValidInput("Enter new event type: ");
+                    bookings[i].venue = getValidInput("Enter new venue: ");
                     bookings[i].dateTime = getValidDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ");
                     bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
 
@@ -2063,6 +2059,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
 
                     saveBookings(bookings, bookFile);
                     cout << "Booking updated successfully.\n";
+
+                    // Organizer reminder after editing
+                    int rChoice;
+                    cout << "\nReminder Options:\n";
+                    cout << "1. 15 minutes before event\n";
+                    cout << "2. 30 minutes before event\n";
+                    cout << "3. 1 hour before event\n";
+                    cout << "4. 2 hours before event\n";
+                    cout << "5. Skip reminder\n";
+                    cout << "Enter choice (1-5): ";
+                    cin >> rChoice;
+                    cin.ignore();
+
+                    int offset = -1;
+                    if (rChoice == 1) offset = 15;
+                    else if (rChoice == 2) offset = 30;
+                    else if (rChoice == 3) offset = 60;
+                    else if (rChoice == 4) offset = 120;
+
+                    if (offset > 0) {
+                        addBookingReminders(bookings[i], offset);
+                    }
+
                     break;
                 }
             }
@@ -2107,6 +2126,8 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
 
     } while (choice != 6);
 }
+
+
 
 Booking createBooking(int id, vector<Booking>& bookings, const string& organizerName) {
     Booking b;
