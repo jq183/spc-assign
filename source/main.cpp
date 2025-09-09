@@ -3176,7 +3176,7 @@ void startMonitoring(Booking b, vector<string>& reportList) {
                     break;
                 }
             }
-            system("cls");
+            cout<< "________________________Update______________________________";
             printQuickNotes(e);
             break;
         }
@@ -3364,12 +3364,25 @@ void loadReportList(vector<string>& reportList) {
         cout << "No existing report list found.\n";
         return;
     }
+
     string line;
     while (getline(in, line)) {
-        if (!line.empty())
-            reportList.push_back(line);
+        if (!line.empty()) {
+            // Check if the report name is already in the list
+            bool exists = false;
+            for (const auto& name : reportList) {
+                if (name == line) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                reportList.push_back(line);
+            }
+        }
     }
-    cout << "Loaded " << reportList.size() << " reports.\n";
+
+    cout << "Loaded " << reportList.size() << " unique reports.\n";
 }
 
 void saveReportList(const vector<string>& reportList) {
