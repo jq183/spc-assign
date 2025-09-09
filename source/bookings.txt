@@ -1,8 +1,8 @@
 Event ID: 1
 Name: Tech Conference 2024
-Type: Conference
+Type: Personal Development
 Venue: KL Convention Centre
-Date & Time: 2025-02-15 09:00
+Date & Time: 2026-02-15 09:00
 Deadline: 2026-02-10
 Status: Open
 Guest Limit: 100
@@ -20,7 +20,7 @@ Organizer: John Smith
 --------------------------------------------------
 Event ID: 3
 Name: Birthday Party
-Type: Birthday
+Type: Birthday Party
 Venue: Community Center
 Date & Time: 2025-02-28 15:00
 Deadline: 2026-02-25
@@ -30,7 +30,7 @@ Organizer: System Organizer
 --------------------------------------------------
 Event ID: 4
 Name: Corporate Training
-Type: Workshop
+Type: Personal Development
 Venue: Office Building A
 Date & Time: 2025-03-05 10:00
 Deadline: 2025-03-01
@@ -47,4 +47,44 @@ Deadline: 2026-04-05
 Status: Open
 Guest Limit: 500
 Organizer: System Organizer
+--------------------------------------------------
+Event ID: 6
+Name: Baby Shower
+Type: Baby Shower
+Venue: Office Building A
+Date & Time: 2025-12-31 10:00
+Deadline: 2025-12-27
+Status: Open
+Guest Limit: 30
+Organizer: bbb
+--------------------------------------------------
+Event ID: 7
+Name: abc
+Type: Personal Event
+Venue: abc
+Date & Time: 2026-01-01 12:12
+Deadline: 2025-12-31
+Status: Open
+Guest Limit: 100
+Organizer: bbb
+--------------------------------------------------
+Event ID: 8
+Name: qwe
+Type: Personal Event
+Venue: qwe
+Date & Time: 2025-12-31 12:12
+Deadline: 2025-12-30
+Status: Open
+Guest Limit: 1222
+Organizer: bbb
+--------------------------------------------------
+Event ID: 9
+Name: 123
+Type: 123
+Venue: 123
+Date & Time: 2026-12-12 12:12
+Deadline: 2026-11-12
+Status: Open
+Guest Limit: 12
+Organizer: John Smith
 --------------------------------------------------

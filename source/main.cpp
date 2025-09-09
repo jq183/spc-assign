@@ -105,15 +105,6 @@ string getValidCVV();
 string getValidBankAccount();
 string getValidBankName();
 string getValidEmail();
-string getValidInput(const string& title);
-string getValidDateTime(const string& title);
-string getValidDateline(const string& title);
-string getValidCreditCardNumber();
-string getValidExpiryDate();
-string getValidCVV();
-string getValidBankAccount();
-string getValidBankName();
-string getValidEmail();
 string getValidName();
 string getValidPaymentMethod();
 double getValidAmount();
@@ -122,13 +113,6 @@ int getValidRating(int min, int max);
 
 //Payment
 void userProcessPayment(vector<Booking>& bookings, const string& organizerName);
-char getValidYesNoChoice();
-int getValidRoleChoice();
-int getValidRating(int min, int max);
-
-//Payment
-void proceedPayment(Participant& participant, vector<Booking>& bookings);
-void processAllPayments(vector<Participant>& participants, vector<Booking>& bookings);
 void displayPaymentSummary(const vector<Participant>& participants);
 void showPaymentMenu(vector<Participant>& participants, vector<Booking>& bookings);
 void generatePaymentReceipt(const Participant& participant, double amountDue, const string& paymentMethod, const string& userEmail, const Booking& eventInfo);vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName);
@@ -149,6 +133,7 @@ void JoinedEventMenu(vector<Booking>& bookings, const string& organizerName);
 //Booking
 Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName);
 time_t deadline(const string& deadline);
+void manageBookings(vector<Booking>& bookings, const string& bookFile, const string& partFile, const string& organizerName);
 void saveBookings(vector<Booking>& bookings, const string& file);
 void saveParticipants(vector<Booking>& bookings, const string& file);
 void loadBookings(vector<Booking>& bookings, const string& file);
@@ -157,13 +142,7 @@ void checkDeadlines(vector<Booking>& bookings);
 void destroyEvent(vector<Booking>& bookings, int eventId, const string& bookFile, const string& partFile);
 
 //Reminder
-time_t stringToDateTime(const string &dateTime);
-time_t stringToDate(const string &dateStr);
-string formatTimeHHMM(time_t t);
-string formatDateYMD(time_t t);
-void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message);
-void checkBookingStatus(vector<Booking> &bookings);
-void addBookingReminders(const Booking &b, int minutesBefore);
+void addBookingReminders(const Booking &b, int minutesBefore) ;
 
 //Marketing
 string computeStatus(string startDate, string endDate);
@@ -273,11 +252,11 @@ char getValidYesNoChoice() {
 
         getline(cin, input);
         if (input.empty()) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
+            cout << "Error: Please enter 'y' or 'n' only:" ;
             continue;
         }
         else if (input.length() > 1) {
-            cout << "Error: Please enter 'y' or 'n' only." << endl;
+            cout << "Error: Please enter 'y' or 'n' only:" ;
             continue;
         }
         else {
@@ -287,7 +266,7 @@ char getValidYesNoChoice() {
                 return choice;
             }
             else {
-                cout << "Error: Please enter 'y' or 'n' only." << endl;
+                cout << "Error: Please enter 'y' or 'n' only:" ;
             }
         }
     } while (!isValidChoice);
@@ -494,6 +473,15 @@ string getCurrentDate() {
     return string(buffer);
 }
 
+bool isInEvent(const Booking& event, const string& participantName) {
+    for (const auto& participant : event.participants) {
+        if (participant.name == participantName) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void addParticipants(vector<Booking>& bookings, const string& organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           ADD PARTICIPANTS TO EVENT" << endl;
@@ -568,6 +556,15 @@ void addParticipants(vector<Booking>& bookings, const string& organizerName) {
         Participant ptcp;
         cout << "Enter participant name: ";
         ptcp.name = getValidName();
+
+        if (isInEvent(selectedEvent, ptcp.name)) {
+            cout << "\nError: " << ptcp.name << " is already registered for this event!" << endl;
+            cout << "Cannot add duplicate participants to the same event." << endl;
+
+            cout << "Continue adding other participants? (y/n): ";
+            continueAdding = getValidYesNoChoice();
+            continue;
+        }
 
         ptcp.role = "Customer";
 
@@ -709,38 +706,53 @@ void regAccount(vector<UserProfile>& users) {
     saveUsers(users);
 }
 
-void viewParticipants(const vector<Booking>& bookings,const string&organizerName) {
+void viewParticipants(const vector<Booking>& bookings, const string& organizerName) {
     cout << "\n" << string(60, '=') << endl;
     cout << "           VIEW PARTICIPANTS" << endl;
     cout << string(60, '=') << endl;
 
+    vector<int> organizerEventIndices;
+
     cout << "\nAvailable Events to View Participants:\n";
     cout << string(60, '-') << endl;
-    int count = 0;
+
     for (size_t i = 0; i < bookings.size(); i++) {
         if (bookings[i].organizerName == organizerName) {
-            count++;
-            cout << "Event " << (i + 1) << ":" << endl;
-            cout << "  Name: " << bookings[i].eventName << endl;
-            cout << "  Type: " << bookings[i].eventType << endl;
-            cout << "  Venue: " << bookings[i].venue << endl;
-            cout << "  Date & Time: " << bookings[i].dateTime << endl;
-            cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
-            cout << string(60, '-') << endl;
+            organizerEventIndices.push_back(i);
         }
+    }
+
+    if (organizerEventIndices.empty()) {
+        cout << "No events found for organizer: " << organizerName << endl;
+        return;
+    }
+
+    for (size_t j = 0; j < organizerEventIndices.size(); j++) {
+        int eventIndex = organizerEventIndices[j];
+        cout << "Event " << (j + 1) << ":" << endl;  // 使用连续编号
+        cout << "  Name: " << bookings[eventIndex].eventName << endl;
+        cout << "  Type: " << bookings[eventIndex].eventType << endl;
+        cout << "  Venue: " << bookings[eventIndex].venue << endl;
+        cout << "  Date & Time: " << bookings[eventIndex].dateTime << endl;
+        cout << "  Current Participants: " << bookings[eventIndex].participants.size()
+             << "/" << bookings[eventIndex].guestCount << endl;
+        cout << string(60, '-') << endl;
     }
 
     int eventChoice;
     cout << "Select an event to view participants" << endl;
     cout << "--------------------------------" << endl;
-    cout << "Enter event number (1-" << count << "): ";
+    cout << "Enter event number (1-" << organizerEventIndices.size() << "): ";
+
     string input;
     getline(cin, input);
 
     try {
         eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(bookings.size())) {
-            cout << "Invalid event selection." << endl;
+
+        if (eventChoice < 1 || eventChoice > static_cast<int>(organizerEventIndices.size())) {
+            cout << "Invalid event selection. Please enter a number between 1 and "
+                 << organizerEventIndices.size() << "." << endl;
             return;
         }
     }
@@ -749,7 +761,7 @@ void viewParticipants(const vector<Booking>& bookings,const string&organizerName
         return;
     }
 
-    int selectedEventIndex = eventChoice - 1;
+    int selectedEventIndex = organizerEventIndices[eventChoice - 1];
     const Booking& selectedEvent = bookings[selectedEventIndex];
 
     cout << "\n--- Participants for " << selectedEvent.eventName << " ---\n";
@@ -764,7 +776,8 @@ void viewParticipants(const vector<Booking>& bookings,const string&organizerName
         cout << "No participants registered yet." << endl;
     }
     else {
-        cout << "Registered Participants (" << selectedEvent.participants.size() << "/" << selectedEvent.guestCount << "):\n";
+        cout << "Registered Participants (" << selectedEvent.participants.size()
+             << "/" << selectedEvent.guestCount << "):\n";
         for (size_t i = 0; i < selectedEvent.participants.size(); i++) {
             cout << i + 1 << ". " << selectedEvent.participants[i].name
                 << " (ID: " << selectedEvent.participants[i].id << ")"
@@ -943,20 +956,13 @@ void userProcessPayment(Participant& participant,const Booking& selectedEvent) {
 }
 
 vector<Booking> getOrganizerEvents(const vector<Booking>& b, const string& organizerName) {
-    cout << "DEBUG: Looking for organizer: '" << organizerName << "'" << endl;
-    cout << "DEBUG: Total bookings: " << b.size() << endl;
 
     vector<Booking> organizerEvents;
     for (size_t i = 0; i < b.size(); i++) {
-        cout << "DEBUG: Booking " << i << " organizer: '" << b[i].organizerName << "'" << endl;
-        cout << "DEBUG: Event name: '" << b[i].eventName << "'" << endl;
-        cout << "DEBUG: String comparison result: " << (b[i].organizerName == organizerName) << endl;
-
         if (b[i].organizerName == organizerName) {
             organizerEvents.push_back(b[i]);
         }
     }
-    cout << "DEBUG: Found " << organizerEvents.size() << " events" << endl;
     return organizerEvents;
 }
 
@@ -1042,6 +1048,40 @@ void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
     cout << "\nSuccessfully joined the event!" << endl;
     cout << "Your Participant ID: " << participant.id << endl;
     cout << "Amount Due: RM" << fixed << setprecision(2) << participant.amountDue << endl;
+
+    cout << "\nDo you want to set up event reminders? (y/n): ";
+    if (getValidYesNoChoice() == 'y') {
+        cout << "\nReminder Options:" << endl;
+        cout << "1. 15 minutes before event" << endl;
+        cout << "2. 30 minutes before event" << endl;
+        cout << "3. 1 hour before event" << endl;
+        cout << "4. 2 hours before event" << endl;
+        cout << "Enter choice (1-4): ";
+
+        string reminderInput;
+        getline(cin, reminderInput);
+
+        int minutes = 30; // default
+        try {
+            int choice = stoi(reminderInput);
+            switch(choice) {
+                case 1: minutes = 15; break;
+                case 2: minutes = 30; break;
+                case 3: minutes = 60; break;
+                case 4: minutes = 120; break;
+                default:
+                    cout << "Invalid choice, using default (30 minutes)." << endl;
+                    minutes = 30;
+                    break;
+            }
+        } catch (...) {
+            cout << "Invalid input, using default (30 minutes)." << endl;
+            minutes = 30;
+        }
+
+        addBookingReminders(selectedEvent, minutes);
+        cout << "Reminder set for " << minutes << " minutes before the event!" << endl;
+    }
 
     cout << "\nWould you like to pay now? (y/n): ";
     if (getValidYesNoChoice() == 'y') {
@@ -1388,7 +1428,7 @@ void viewAllPaymentsSummary( vector<Booking>& b,const string& organizerName) {
     cout << string(70, '=') << endl;
 }
 
-void processIndividualPayment(vector<Booking>& bookings,const string& organizerName) {
+void processIndividualPayment(vector<Booking>& bookings, const string& organizerName) {
     vector<pair<int, int>> allParticipants;
 
     cout << "\n" << string(60, '=') << endl;
@@ -1436,7 +1476,13 @@ void processIndividualPayment(vector<Booking>& bookings,const string& organizerN
         int bookingIdx = allParticipants[selection - 1].first;
         int participantIdx = allParticipants[selection - 1].second;
 
-        processPaymentTransaction(bookings[bookingIdx].participants[participantIdx],bookings[bookingIdx]);
+        Participant& participant = bookings[bookingIdx].participants[participantIdx];
+        if (participant.email.empty()) {
+            cout << "\nParticipant email required for receipt generation." << endl;
+            participant.email = getValidEmail();
+        }
+
+        processPaymentTransaction(participant, bookings[bookingIdx]);
 
         saveBookings(bookings, "bookings.txt");
         saveParticipants(bookings, "participants.txt");
@@ -1808,48 +1854,285 @@ string getValidInput(const string& title) {
 
 string getValidDateTime(const string& title) {
     string input;
-    regex pattern{ "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}" };
-    do {
+    regex pattern{ R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2})" };
+
+    while (true) {
         cout << title;
         getline(cin, input);
+
         if (input.empty()) {
             cout << "Input cannot be empty. Try again.\n";
+            continue;
         }
-        else if (!regex_match(input, pattern)) {
-            cout << "Input format incorrect. Try again.\n";
+
+        if (!regex_match(input, pattern)) {
+            cout << "Input format incorrect. Use YYYY-MM-DD HH:MM. Try again.\n";
+            continue;
         }
-    } while (input.empty());
-    return input;
+
+        int year, month, day, hour, minute;
+        if (sscanf(input.c_str(), "%d-%d-%d %d:%d", &year, &month, &day, &hour, &minute) != 5) {
+            cout << "Invalid date/time format. Try again.\n";
+            continue;
+        }
+
+        tm t = {};
+        t.tm_year = year - 1900;
+        t.tm_mon  = month - 1;
+        t.tm_mday = day;
+        t.tm_hour = hour;
+        t.tm_min  = minute;
+        t.tm_sec  = 0;
+
+        time_t tt = mktime(&t);
+        if (tt == -1) {
+            cout << "Invalid date/time. Try again.\n";
+            continue;
+        }
+
+        if (t.tm_year != year - 1900 || t.tm_mon != month - 1 ||
+            t.tm_mday != day || t.tm_hour != hour || t.tm_min != minute) {
+            cout << "Invalid date/time value (e.g., Feb 30 or 25:99). Try again.\n";
+            continue;
+        }
+
+        // 🚨 Check future only
+        if (tt <= time(0)) {
+            cout << "Date/time must be in the future. Try again.\n";
+            continue;
+        }
+
+        return input; // ✅ valid
+    }
 }
 
 string getValidDateline(const string& title) {
     string input;
-    regex pattern{ "\\d{4}-\\d{2}-\\d{2}" };
-    do {
+    regex pattern{ R"(\d{4}-\d{2}-\d{2})" };
+
+    while (true) {
         cout << title;
         getline(cin, input);
+
         if (input.empty()) {
             cout << "Input cannot be empty. Try again.\n";
+            continue;
         }
-        else if (!regex_match(input, pattern)) {
-            cout << "Input format incorrect. Try again.\n";
+
+        if (!regex_match(input, pattern)) {
+            cout << "Input format incorrect. Use YYYY-MM-DD. Try again.\n";
+            continue;
         }
-    } while (input.empty());
-    return input;
+
+        int year, month, day;
+        if (sscanf(input.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
+            cout << "Invalid date format. Try again.\n";
+            continue;
+        }
+
+        tm t = {};
+        t.tm_year = year - 1900;
+        t.tm_mon  = month - 1;
+        t.tm_mday = day;
+        t.tm_hour = 0;
+        t.tm_min  = 0;
+        t.tm_sec  = 0;
+
+        time_t tt = mktime(&t);
+        if (tt == -1) {
+            cout << "Invalid date. Try again.\n";
+            continue;
+        }
+
+        if (t.tm_year != year - 1900 || t.tm_mon != month - 1 || t.tm_mday != day) {
+            cout << "Invalid date value (e.g., Feb 30). Try again.\n";
+            continue;
+        }
+
+        // 🚨 Check future only
+        if (tt <= time(0)) {
+            cout << "Deadline must be in the future. Try again.\n";
+            continue;
+        }
+
+        return input; // ✅ valid
+    }
 }
 
-Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName) {
+
+void manageBookings(vector<Booking>& bookings, const string& bookFile, const string& partFile, const string& organizerName) {
+    int choice;
+    do {
+        cout << "\n===== Booking Management Menu =====\n";
+        cout << "1. Create a new booking\n";
+        cout << "2. View all bookings\n";
+        cout << "3. Edit a booking\n";
+        cout << "4. Delete a booking\n";
+        cout << "5. Check deadlines\n";
+        cout << "6. Exit booking management\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+        case 1: {
+            int newId = bookings.empty() ? 1 : bookings.back().eventId + 1;
+            Booking newBooking = createBooking(newId, bookings, organizerName);
+            cout << "Booking created successfully with ID " << newBooking.eventId << ".\n";
+            break;
+        }
+        case 2: {
+            if (bookings.empty()) {
+                cout << "No bookings found.\n";
+            } else {
+                cout << "\n--- Current Bookings ---\n";
+                for (size_t i = 0; i < bookings.size(); i++) {
+                    cout << "Event ID: " << bookings[i].eventId << "\n";
+                    cout << "Name: " << bookings[i].eventName << "\n";
+                    cout << "Type: " << bookings[i].eventType << "\n";
+                    cout << "Venue: " << bookings[i].venue << "\n";
+                    cout << "Date & Time: " << bookings[i].dateTime << "\n";
+                    cout << "Deadline: " << bookings[i].deadline << "\n";
+                    cout << "Status: " << bookings[i].status << "\n";
+                    cout << "Guest Limit: " << bookings[i].guestCount << "\n";
+                    cout << "Organizer: " << bookings[i].organizerName << "\n";
+                    cout << string(50, '-') << "\n";
+                }
+            }
+            break;
+        }
+        case 3: {
+            int id;
+            cout << "Enter Event ID to edit: ";
+            cin >> id;
+            cin.ignore();
+            bool found = false;
+
+            for (size_t i = 0; i < bookings.size(); i++) {
+                if (bookings[i].eventId == id) {
+                    found = true;
+                    cout << "Editing booking: " << bookings[i].eventName << "\n";
+
+                    while (true) {
+                        string input = getValidInput("Enter new event name: ");
+                        if (!input.empty()) {bookings[i].eventName = input;
+                            break;
+                        } else {
+                            cout << "Event name cannot be empty. Try again.\n";
+                        }
+                    }
+
+                    while (true) {
+                        string input = getValidInput("Enter new event type: ");
+                        if (!input.empty()) {
+                            bookings[i].eventType = input;
+                            break;
+                        } else {
+                            cout << "Event type cannot be empty. Try again.\n";
+                        }
+                    }
+
+                    while (true) {
+                        string input = getValidInput("Enter new venue: ");
+                        if (!input.empty()) {
+                            bookings[i].venue = input;
+                            break;
+                        } else {
+                            cout << "Venue cannot be empty. Try again.\n";
+                        }
+                    }
+
+                    bookings[i].dateTime = getValidDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ");
+                    bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
+
+                    // enforce numeric + non-negative loop
+                    while (true) {
+                        cout << "Enter new guest limit: ";
+                        if ((cin >> bookings[i].guestCount) && bookings[i].guestCount >= 0) {
+                            cin.ignore();
+                            break;
+                        } else {
+                            cout << "Invalid number. Enter a non-negative value: ";
+                            cin.clear();
+                            cin.ignore(10000, '\n');
+                        }
+                    }
+
+                    saveBookings(bookings, bookFile);
+                    cout << "Booking updated successfully.\n";
+                    break;
+                }
+            }
+
+    if (!found) {
+        cout << "Booking with Event ID " << id << " not found.\n";
+    }
+    break;
+        }
+        case 4: {
+            int id;
+            cout << "Enter Event ID to delete: ";
+            cin >> id;
+            cin.ignore();
+            destroyEvent(bookings, id, bookFile, partFile);
+            break;
+        }
+        case 5: {
+            checkDeadlines(bookings);
+            saveBookings(bookings, bookFile);
+            cout << "Deadlines checked and statuses updated.\n";
+            break;
+        }
+        case 6:
+            cout << "Exiting booking management.\n";
+            break;
+        default:
+            cout << "Invalid choice. Try again.\n";
+        }
+
+    } while (choice != 6);
+}
+
+Booking createBooking(int id, vector<Booking>& bookings, const string& organizerName) {
     Booking b;
     b.eventId = id;
     b.organizerName = organizerName;
 
     cout << "\n--- Create a New Event Booking ---\n";
-    b.eventName = getValidInput("Enter event name: ");
-    b.eventType = getValidInput("Enter event type: ");
-    b.venue = getValidInput("Enter venue: ");
+
+    while (true) {
+        string input = getValidInput("Enter event name: ");
+        if (!input.empty()) {
+            b.eventName = input;
+            break;
+        } else {
+            cout << "Event name cannot be empty. Try again.\n";
+        }
+    }
+
+    while (true) {
+        string input = getValidInput("Enter event type: ");
+        if (!input.empty()) {
+            b.eventType = input;
+            break;
+        } else {
+            cout << "Event type cannot be empty. Try again.\n";
+        }
+    }
+
+    while (true) {
+        string input = getValidInput("Enter venue: ");
+        if (!input.empty()) {
+            b.venue = input;
+            break;
+        } else {
+            cout << "Venue cannot be empty. Try again.\n";
+        }
+    }
+
     b.dateTime = getValidDateTime("Enter date & time (YYYY-MM-DD HH:MM): ");
     b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
-    b.status = "Open";
+
     cout << "Enter maximum number of guests: ";
     while (!(cin >> b.guestCount) || b.guestCount < 0) {
         cout << "Invalid number. Enter a non-negative value: ";
@@ -1857,12 +2140,25 @@ Booking createBooking(int id, vector<Booking>& bookings,const string& organizerN
         cin.ignore(10000, '\n');
     }
     cin.ignore();
+
+    b.status = "Open";
+    Participant hostParticipant;
+    hostParticipant.name = organizerName;
+    hostParticipant.role = "Host/Vendor";
+    hostParticipant.id = generateParticipantId(b, organizerName, 0);
+    hostParticipant.amountDue = 100;
+    hostParticipant.paid = false;
+    hostParticipant.paymentDate = getCurrentDate();
+    hostParticipant.email = "";
+    b.participants.push_back(hostParticipant);
     bookings.push_back(b);
 
     saveBookings(bookings, "bookings.txt");
+    saveParticipants(bookings,"participants.txt");
 
     return b;
 }
+
 
 void saveBookings(vector<Booking>& bookings, const string& file) {
     ofstream outFile(file);
@@ -2282,7 +2578,7 @@ void marketingModule(vector<EventAd>& ads) {
 }
 
 
-//User/Login
+//UserLogin
 string normalize(string s) {
     string result;
     for (char c : s) {
@@ -2668,20 +2964,22 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                             break;
 
                         case 3:
-                            //booking
+                                manageBookings(b, "bookings.txt", "participants.txt", organizerName);
                             break;
 
                         case 4:
-                            marketingModule(ads);
+                                marketingModule(ads);
                             break;
 
                         case 5:
-                            registrationMenu(b,organizerName);
-                            break;
+                                registrationMenu(b,organizerName);
+                                break;
+
 
                                 case 6 :
                                 organizerPaymentMenu(b,organizerName);
                                 break;
+
                         case 7:
                             //reporting
                             break;
@@ -2693,7 +2991,7 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                         default: cout << "Invalid choice.\n";
                         }
 
-                    } while (orgChoice != 7);
+                    } while (orgChoice != 8);
                 }
                 else {
                     int subChoice;
@@ -2702,10 +3000,11 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                         cout << "1. Join Event\n";
                         cout << "2. View Joined Event\n";
                         cout << "3. View Payment\n";
-                        cout << "4. Change Password\n";
-                        cout << "5. Update Personal Info\n";
-                        cout << "6. Delete Account\n";
-                        cout << "7. Logout\n";
+                        cout << "4. View Advertisement\n";
+                        cout << "5. Change Password\n";
+                        cout << "6. Update Personal Info\n";
+                        cout << "7. Delete Account\n";
+                        cout << "8. Logout\n";
                         cout << "Choice: ";
                         cin >> subChoice;
                         cin.ignore();
@@ -2715,23 +3014,25 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                        }
                         else if (subChoice == 2) {
                             viewJoinedEvents(b,*user);
-
                         }
                         else if (subChoice == 3) {
                             userViewAndMakePayments(b,*user);
                         }
-                        else if (subChoice == 4) {
-                            changePwd(*user);
+                        else if(subChoice == 4){
+                            showAllAds(ads);
                         }
                         else if (subChoice == 5) {
-                            updateInfo(*user);
+                            changePwd(*user);
                         }
                         else if (subChoice == 6) {
+                            updateInfo(*user);
+                        }
+                        else if (subChoice == 7) {
                             deleteAccount(users, user);
                             break;
                         }
 
-                    } while (subChoice != 7 && user != nullptr);
+                    } while (subChoice != 8 && user != nullptr);
                 }
             }
             else {
@@ -3121,6 +3422,181 @@ void readReport(const string& filename) {
 
     inFile.close();
 }
+
+time_t stringToDateTime(const string &dateTime) {
+    tm t = {};
+    int year, month, day, hour, minute;
+    if (sscanf(dateTime.c_str(), "%d-%d-%d %d:%d",
+               &year, &month, &day, &hour, &minute) != 5) {
+        cerr << "Invalid dateTime format: " << dateTime << endl;
+        return -1;
+    }
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = 0;
+    return mktime(&t);
+}
+
+time_t stringToDate(const string &dateStr) {
+    tm t = {};
+    int year, month, day;
+    if (sscanf(dateStr.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
+        cerr << "Invalid deadline format: " << dateStr << endl;
+        return -1;
+    }
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = 0;
+    t.tm_min = 0;
+    t.tm_sec = 0;
+    return mktime(&t);
+}
+
+string formatTimeHHMM(time_t t) {
+    tm *lt = localtime(&t);
+    ostringstream out;
+    out << setw(2) << setfill('0') << lt->tm_hour << ":"
+        << setw(2) << setfill('0') << lt->tm_min;
+    return out.str();
+}
+
+string formatDateYMD(time_t t) {
+    tm *lt = localtime(&t);
+    ostringstream out;
+    out << (lt->tm_year + 1900) << "/"
+        << setw(2) << setfill('0') << (lt->tm_mon + 1) << "/"
+        << setw(2) << setfill('0') << lt->tm_mday;
+    return out.str();
+}
+
+
+static string sanitizeMessageForBatch(const string &msg) {
+    string out;
+    out.reserve(msg.size());
+    for (char c : msg) {
+        if (c == '"') out.push_back('\'');
+        else if (c == '%') out += "%%";
+        else if (c == '\r' || c == '\n') out.push_back(' ');
+        else out.push_back(c);
+    }
+    return out;
+}
+
+// get directory
+static string getTempDir() {
+    const char *tmp = getenv("TEMP");
+    if (!tmp) tmp = getenv("TMP");
+    if (!tmp) return string("."); // fallback
+    return string(tmp);
+}
+
+// create a batch file that runs: msg * "message"
+static string createReminderBatch(const string &taskName, const string &message) {
+    string tmpdir = getTempDir();
+    // set file name to avoid collision
+    time_t t = time(nullptr);
+    string fname = tmpdir + "\\reminder_" + taskName + "_" + to_string((long long)t) + ".bat";
+
+    ofstream out(fname.c_str(), ios::binary);
+    if (!out) {
+        cerr << "Failed to create batch file: " << fname << endl;
+        return "";
+    }
+
+    string safeMsg = sanitizeMessageForBatch(message);
+
+    out << "@echo off\r\n";
+    out << "msg * \"" << safeMsg << "\"\r\n";
+    out << "exit /b 0\r\n";
+    out.close();
+
+    return fname;
+}
+
+string convertToSchtasksDate(const string &date) {
+    int y, m, d;
+    if (sscanf(date.c_str(), "%d%*[-/]%d%*[-/]%d", &y, &m, &d) != 3) {
+        cerr << "Invalid date format: " << date << endl;
+        return "01/01/2000"; // fallback
+    }
+
+    char buffer[11];
+    sprintf(buffer, "%02d/%02d/%04d", d, m, y);
+    return string(buffer);
+}
+
+void scheduleReminder(const string &taskName, const string &date, const string &time, const string &message) {
+    // Convert date to dd/mm/yyyy format for schtasks
+    string schtasksDate = convertToSchtasksDate(date);
+
+    // Create a batch file with msg command
+    string batchPath = createReminderBatch(taskName, message);
+    if (batchPath.empty()) {
+        cerr << "Could not create reminder batch file." << endl;
+        return;
+    }
+
+    string quotedPath = "\"" + batchPath + "\"";
+
+    // Build the schtasks command
+    string command = "schtasks /create /sc once /tn \"" + taskName +
+                     "\" /tr " + quotedPath +
+                     " /st " + time + " /sd " + schtasksDate + " /f";
+
+    cout << "Command: " << command << endl;
+
+    int result = system((command + " >nul 2>&1").c_str());
+
+    if (result == 0) {
+        cout << "Reminder scheduled: " << taskName
+             << " at " << schtasksDate << " " << time << endl;
+    } else {
+        cerr << "Failed to schedule reminder! (exit=" << result << ")" << endl;
+    }
+}
+
+void addBookingReminders(const Booking &b, int minutesBefore) { //if need to set reminder just call this, and it will set all reminders
+    time_t deadlineTime = stringToDate(b.deadline);
+    if (deadlineTime != -1) {
+        string timeStr = "09:00";
+        string dateStr = formatDateYMD(deadlineTime);
+
+        string taskName = "DeadlineReminder_" + to_string(b.eventId);
+        string message = "\"Reminder: Registration deadline for " + b.eventName + " is today!\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+
+    time_t eventTime = stringToDateTime(b.dateTime);
+    if (eventTime != -1) {
+        time_t reminderTime = eventTime - (minutesBefore * 60); //60 is changeable
+        string timeStr = formatTimeHHMM(reminderTime);
+        string dateStr = formatDateYMD(reminderTime);
+
+        string taskName = "EventReminder_" + to_string(b.eventId);
+        string message = "\"Reminder: Event " + b.eventName +
+                         " starts in " + to_string(minutesBefore) + " minutes!\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+
+    if (b.status == "Closed") {
+        time_t now = time(0);
+        string timeStr = formatTimeHHMM(now + 60);
+        string dateStr = formatDateYMD(now);
+
+        string taskName = "ClosedReminder_" + to_string(b.eventId);
+        string message = "\"Notice: Event " + b.eventName + " is now CLOSED.\"";
+
+        scheduleReminder(taskName, dateStr, timeStr, message);
+    }
+}
+
+
 int main() {
 
     vector<UserProfile> users;
@@ -3130,6 +3606,7 @@ int main() {
     loadUsers(users);
     createDefaultOrg(users);
     saveUsers(users);
+    loadAds(ads);
 
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
@@ -3137,10 +3614,7 @@ int main() {
 
     loginModule(users,ads,bookings);
 
-    loadAds(ads);
-    marketingModule(ads);
     saveAds(ads);
 
     return 0;
 }
-
