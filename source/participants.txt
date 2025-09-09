@@ -10,6 +10,7 @@ Participants:
   - ID: PER1FRA7, Name: Frank Miller, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-08
   - ID: PER18, Name: 1234, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-08
   - ID: PER1ASD9, Name: asdfg, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: TEC1QWE10, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-09
 ------------------------------
 Event ID: 2
 Event Name: Wedding Reception
@@ -30,6 +31,8 @@ Participants:
   - ID: BIR3QWE4, Name: Qwerty, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-08
   - ID: BIR3ABC5, Name: abcd, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-08
   - ID: BIR3ASD6, Name: asdfg, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: BIR3JOH7, Name: John, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-09
+  - ID: BIR3QWE8, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-10
 ------------------------------
 Event ID: 4
 Event Name: Corporate Training
@@ -51,19 +54,44 @@ Event ID: 6
 Event Name: Baby Shower
 Participants:
   - ID: BAB6BOB1, Name: Bob Wilson, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-09
+  - ID: BAB6QWE2, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-10
 ------------------------------
 Event ID: 7
 Event Name: abc
 Participants:
   - ID: ABC7BOB1, Name: Bob Wilson, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-09
+  - ID: ABC7QWE2, Name: qwe, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: , Payment Date: 2025-09-09
 ------------------------------
 Event ID: 8
 Event Name: qwe
 Participants:
   - ID: QWE8BOB1, Name: Bob Wilson, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-09
+  - ID: QWE82, Name: 123, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: QWE8QWE3, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-10
 ------------------------------
 Event ID: 9
 Event Name: 123
 Participants:
   - ID: 9JOH1, Name: John Smith, Role: Host/Vendor, Amount Due: 100, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 9QW2, Name: qw, Role: Customer, Amount Due: 50, Paid: No, Payment Method: N/A, Payment Date: N/A
+  - ID: 9BOB3, Name: Bob Wilson, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-09
+------------------------------
+Event ID: 10
+Event Name: qw
+Participants:
+  - ID: QW10BBB1, Name: bbb, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: , Payment Date: 2025-09-09
+------------------------------
+Event ID: 11
+Event Name: 12
+Participants:
+  - ID: 11BBB1, Name: bbb, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: , Payment Date: 2025-09-09
+  - ID: 11QWE2, Name: qwe, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bulk Processing, Payment Date: 2025-09-10
+------------------------------
+Event ID: 12
+Event Name: qqq
+Participants:
+  - ID: QQQ12BBB1, Name: bbb, Role: Host/Vendor, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-10
+  - ID: QQQ122, Name: 123, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Cash, Payment Date: 2025-09-10
+  - ID: QQQ12JOH3, Name: John, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-10
+  - ID: QQQ12QWE4, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-10
 ------------------------------
