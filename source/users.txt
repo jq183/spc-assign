@@ -17,3 +17,4 @@ aaa|Aaa123|What is your pet's name?|aaa|user|John|john@gmail.com|0121135564
 bbb|Bbb123|What is your pet's name?|12|organizer|bbb|bbb@gmail.com|0122222222
 Jas|Jas2123?|What is your favorite color?|blue|organizer|Jas Chia|jas@gmail.com|01231112455
 Jane|Kol4444?|What is your favorite color?|purple|user|Jane Chia|j@gmail.com|0123456789
+Elena|Elena12?|What is your pet's name?|jhoo|user|Elena Tan|elena@gmail.com|012211235588

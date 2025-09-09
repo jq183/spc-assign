@@ -3698,6 +3698,7 @@ int main() {
     loadUsers(users);
     createDefaultOrg(users);
     saveUsers(users);
+    loadAds(ads);
 
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
@@ -3707,8 +3708,6 @@ int main() {
 
     loginModule(users, ads, bookings, reportList);
 
-    loadAds(ads);
-    marketingModule(ads);
     saveAds(ads);
 
     return 0;
