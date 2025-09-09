@@ -144,6 +144,7 @@ void JoinedEventMenu(vector<Booking>& bookings, const string& organizerName);
 //Booking
 Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName);
 time_t deadline(const string& deadline);
+time_t parseDateTime(const string& dt, bool hasTime);
 void manageBookings(vector<Booking>& bookings, const string& bookFile, const string& partFile, const string& organizerName);
 void saveBookings(vector<Booking>& bookings, const string& file);
 void saveParticipants(vector<Booking>& bookings, const string& file);
@@ -185,18 +186,19 @@ void showAllU(const vector<UserProfile>& users);
 void orgDeleteU(vector<UserProfile>& users);
 void orgUpdateU(vector<UserProfile>& users);
 void manageUsers(vector<UserProfile>& users);
-void loginModule(vector<UserProfile>& users,vector<EventAd>&ads,vector<Booking>&b);
-
+void loginModule(vector<UserProfile>& users,vector<EventAd>&ads,vector<Booking>&b,vector<string>& reportList);
 //Monitor
-Review createComment(EventState& e);
 void startMonitor(Booking& b);
 EventState convertBookingToEventState(const Booking& b);
-void printQuickNotes(const EventState& e);
-void monitorEvent(vector<Booking>& bookings);
+Review createComment(EventState e);
+void printQuickNotes(EventState e);
+void monitorEvent(vector<Booking>& bookings, vector<string>& reportList);
 
 //Reporting
 void generateReport(EventState e);
-void readReport(const string& filename);
+void loadReportList(vector<string>& reportList);
+void saveReportList(const vector<string>& reportList);
+void readReport(vector<string>& reportList);
 
 int getValidatedInput(int min, int max, const string& prompt) {
     int choice;
@@ -1936,13 +1938,38 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
         cout << "4. Delete a booking\n";
         cout << "5. Check deadlines\n";
         cout << "6. Exit booking management\n";
-        choice = getValidatedInput(1, 6, "Enter choice: ");
+        cout << "Enter choice: ";
+        cin >> choice;
+        cin.ignore();
 
         switch (choice) {
         case 1: {
             int newId = bookings.empty() ? 1 : bookings.back().eventId + 1;
             Booking newBooking = createBooking(newId, bookings, organizerName);
             cout << "Booking created successfully with ID " << newBooking.eventId << ".\n";
+
+            // Organizer reminder
+            int rChoice;
+            cout << "\nReminder Options:\n";
+            cout << "1. 15 minutes before event\n";
+            cout << "2. 30 minutes before event\n";
+            cout << "3. 1 hour before event\n";
+            cout << "4. 2 hours before event\n";
+            cout << "5. Skip reminder\n";
+            cout << "Enter choice (1-5): ";
+            cin >> rChoice;
+            cin.ignore();
+
+            int offset = -1;
+            if (rChoice == 1) offset = 15;
+            else if (rChoice == 2) offset = 30;
+            else if (rChoice == 3) offset = 60;
+            else if (rChoice == 4) offset = 120;
+
+            if (offset > 0) {
+                addBookingReminders(newBooking, offset);
+            }
+
             break;
         }
         case 2: {
@@ -1980,38 +2007,22 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                     found = true;
                     cout << "Editing booking: " << bookings[i].eventName << "\n";
 
-                    while (true) {
-                        string input = getValidInput("Enter new event name: ");
-                        if (!input.empty()) {
-                            bookings[i].eventName = input;
-                            break;
-                        } else {
-                            cout << "Event name cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new event type: ");
-                        if (!input.empty()) {
-                            bookings[i].eventType = input;
-                            break;
-                        } else {
-                            cout << "Event type cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new venue: ");
-                        if (!input.empty()) {
-                            bookings[i].venue = input;
-                            break;
-                        } else {
-                            cout << "Venue cannot be empty. Try again.\n";
-                        }
-                    }
-
+                    bookings[i].eventName = getValidInput("Enter new event name: ");
+                    bookings[i].eventType = getValidInput("Enter new event type: ");
+                    bookings[i].venue = getValidInput("Enter new venue: ");
                     bookings[i].dateTime = getValidDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ");
-                    bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
+
+                    while (true) {
+                        bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
+                        time_t deadlineTime = parseDateTime(bookings[i].deadline, false);
+                        time_t eventTime = parseDateTime(bookings[i].dateTime, true);
+
+                        if (deadlineTime <= eventTime) {
+                            break;
+                        } else {
+                            cout << "Deadline cannot be after the event date. Try again.\n";
+                        }
+                    }
 
                     while (true) {
                         cout << "Enter new guest limit: ";
@@ -2027,6 +2038,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
 
                     saveBookings(bookings, bookFile);
                     cout << "Booking updated successfully.\n";
+
+                    // Organizer reminder after editing
+                    int rChoice;
+                    cout << "\nReminder Options:\n";
+                    cout << "1. 15 minutes before event\n";
+                    cout << "2. 30 minutes before event\n";
+                    cout << "3. 1 hour before event\n";
+                    cout << "4. 2 hours before event\n";
+                    cout << "5. Skip reminder\n";
+                    cout << "Enter choice (1-5): ";
+                    cin >> rChoice;
+                    cin.ignore();
+
+                    int offset = -1;
+                    if (rChoice == 1) offset = 15;
+                    else if (rChoice == 2) offset = 30;
+                    else if (rChoice == 3) offset = 60;
+                    else if (rChoice == 4) offset = 120;
+
+                    if (offset > 0) {
+                        addBookingReminders(bookings[i], offset);
+                    }
+
                     break;
                 }
             }
@@ -2072,6 +2106,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
     } while (choice != 6);
 }
 
+time_t parseDateTime(const string& dt, bool hasTime) {
+    tm t = {};
+    int year, month, day, hour = 0, minute = 0;
+
+    if (hasTime) {
+        if (sscanf(dt.c_str(), "%d-%d-%d %d:%d", &year, &month, &day, &hour, &minute) != 5)
+            return -1;
+    } else {
+        if (sscanf(dt.c_str(), "%d-%d-%d", &year, &month, &day) != 3)
+            return -1;
+    }
+
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = 0;
+
+    return mktime(&t);
+}
+
+
 Booking createBooking(int id, vector<Booking>& bookings, const string& organizerName) {
     Booking b;
     b.eventId = id;
@@ -2110,7 +2167,19 @@ Booking createBooking(int id, vector<Booking>& bookings, const string& organizer
     }
 
     b.dateTime = getValidDateTime("Enter date & time (YYYY-MM-DD HH:MM): ");
-    b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
+
+
+    while (true) {
+        b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
+        time_t deadlineTime = parseDateTime(b.deadline, false);
+        time_t eventTime = parseDateTime(b.dateTime, true);
+
+        if (deadlineTime <= eventTime) {
+            break;
+        } else {
+            cout << "Deadline cannot be after the event date. Try again.\n";
+        }
+    }
 
     cout << "Enter maximum number of guests: ";
     while (!(cin >> b.guestCount) || b.guestCount < 0) {
@@ -2885,7 +2954,7 @@ void registrationMenu(vector<Booking>& bookings,const string& organizerName) {
     } while (choice != 3);
 }
 
-void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>&b) {
+void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>&b,vector<string>& reportList) {
     int choice;
 
     do {
@@ -2932,7 +3001,7 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                             break;
 
                         case 2:
-                            //monitoring
+                                monitorEvent(b,reportList);
                             break;
 
                         case 3:
@@ -2953,7 +3022,7 @@ void loginModule(vector<UserProfile>& users,vector<EventAd>& ads,vector<Booking>
                                 break;
 
                         case 7:
-                            //reporting
+                                readReport(reportList);
                             break;
 
                         case 8:
@@ -3025,7 +3094,7 @@ const int PROBLEM_TITLE = 0;
 const int ORG_PROBLEM = 1;
 const int PROBLEM_RATING = 2;
 
-void startMonitoring(Booking& b) {
+void startMonitoring(Booking b, vector<string>& reportList) {
     EventState e = convertBookingToEventState(b);
 
     bool continueMonitoring = true;
@@ -3033,8 +3102,8 @@ void startMonitoring(Booking& b) {
     while (continueMonitoring) {
         cout << "\n--- Monitoring Event: " << e.booking.eventName << " ---\n";
         cout << "1. Add Participant review\n";
-        cout << "2. Log Technical Problem\n";
-        cout << "3. Generate Report and Exiting\n";
+        cout << "2. Log Problem\n";
+        cout << "3. Generate Report and Exit\n";
         cout << "Enter choice: ";
 
         string input;
@@ -3073,26 +3142,30 @@ void startMonitoring(Booking& b) {
         }
 
         switch (choice) {
-        case 1:
-            if (e.review.empty()) {
-                Review r = createComment(e);
-                e.review.push_back(r);
-            }
+        case 1: {
+            Review r = createComment(e);
+            e.review.push_back(r);
             break;
-
+        }
         case 2: {
-            string note, title, ratingInput;
-            int rating = -1;
-
+            string note;
             cout << "Enter Problem details: ";
             getline(cin, note);
 
-            cout << "Enter the Title (Food/Technical Problem/Other): ";
-            getline(cin, title);
+            cout << "Select Problem Type:\n";
+            cout << "1. Technical Problem\n";
+            cout << "2. Food Problem\n";
+            cout << "3. Other\n";
+            cout << "Choice: ";
+            string typeChoice;
+            getline(cin, typeChoice);
+
+            string title;
+            if (typeChoice == "1") title = "Technical Problem";
+            else if (typeChoice == "2") title = "Food Problem";
+            else title = "Other";
 
             cout << "Rate the severity (1 = minor, 10 = critical): ";
-            getline(cin, ratingInput);
-
             int severity = getValidRating(1, 10);
 
             for (int i = 0; i < 50; i++) {
@@ -3110,8 +3183,8 @@ void startMonitoring(Booking& b) {
         case 3: {
             generateReport(e);
             string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
-            readReport(filename);
-
+            reportList.push_back(filename);
+            saveReportList(reportList);
             continueMonitoring = false;
             break;
         }
@@ -3119,58 +3192,59 @@ void startMonitoring(Booking& b) {
             cout << "Invalid option.\n";
         }
     }
-
 }
-void monitorEvent(vector<Booking>& bookings) {
+
+void monitorEvent(vector<Booking>& bookings, vector<string>& reportList) {
     cout << "\n" << string(60, '=') << endl;
     cout << "         EVENT MONITOR" << endl;
     cout << string(60, '=') << endl;
-    size_t i;
 
     cout << "\nAvailable Events for monitor:\n";
     cout << string(60, '-') << endl;
-    for ( i = 0; i < bookings.size(); i++) {
-        cout << "Event " << (i + 1) << ":" << endl;
+    for (size_t i = 0; i < bookings.size(); i++) {
+        cout << "Event " << (i + 1) << ":\n";
         cout << "  Name: " << bookings[i].eventName << endl;
         cout << "  Type: " << bookings[i].eventType << endl;
         cout << "  Venue: " << bookings[i].venue << endl;
         cout << "  Date & Time: " << bookings[i].dateTime << endl;
-        cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
+        cout << "  Current Participants: "
+            << bookings[i].participants.size() << "/"
+            << bookings[i].guestCount << endl;
         cout << string(60, '-') << endl;
     }
 
+    cout << "Enter event number (1-" << bookings.size() << "): ";
+    string input;
+    getline(cin, input);
+
     int eventChoice;
-    cout << "Select an event to start monitoring" << endl;
-    cout << "--------------------------------" << endl;
+    try {
+        eventChoice = stoi(input);
+        if (eventChoice < 1 || eventChoice > static_cast<int>(bookings.size())) {
+            cout << "Invalid selection.\n";
+            return;
+        }
+    }
+    catch (...) {
+        cout << "Invalid input.\n";
+        return;
+    }
 
-    eventChoice = getValidatedInput(1, bookings.size(), "Enter event number (1-" + to_string(bookings.size()) + "):" " ):");
+    Booking& selectedEvent = bookings[eventChoice - 1];
+    cout << "Selected Event: " << selectedEvent.eventName << endl;
+    cout << "Selected Event? (Y/N): ";
 
-
-
-    int selectedEventIndex = eventChoice - 1;
-    Booking& selectedEvent = bookings[selectedEventIndex];
-
-    cout << "Event " << (eventChoice) << ":" << endl;
-    cout << "  Name: " << selectedEvent.eventName << endl;
-    cout << "  Type: " << bookings[i].eventType << endl;
-    cout << "  Venue: " << bookings[i].venue << endl;
-    cout << "  Date & Time: " << bookings[i].dateTime << endl;
-    cout << "  Current Participants: " << bookings[i].participants.size() << "/" << bookings[i].guestCount << endl;
-    cout << string(60, '-') << endl;
-
-    cout << "Selected Event? (Y/N) : " << endl;
     if (getValidYesNoChoice() == 'y') {
-        startMonitoring(selectedEvent);
+        startMonitoring(selectedEvent, reportList);
     }
     else {
         system("cls");
     }
-
 }
 
 
 
-void printQuickNotes(const EventState& e) {
+void printQuickNotes(const EventState e) {
     struct Row {
         string detail;
         string title;
@@ -3210,16 +3284,34 @@ EventState convertBookingToEventState(const Booking& b) {
 }
 
 
-Review createComment(EventState& e) {
+Review createComment(const EventState e) {
     Review r;
-    cout << "Enter your Name: ";
-    getline(cin, r.name);
-    cout << "Enter Title: ";
-    getline(cin, r.title);
-    cout << "Enter Comment: ";
-    getline(cin, r.comment);
 
+    // Show participant names
+    cout << "Select your name from the participant list:\n";
+    for (size_t i = 0; i < e.booking.participants.size(); ++i) {
+        cout << i + 1 << ". " << e.booking.participants[i].name << "\n";
+    }
+
+    int choice = 0;
+    do {
+        cout << "Enter number (1-" << e.booking.participants.size() << "): ";
+        cin >> choice;
+
+        if (choice < 1 || choice > (int)e.booking.participants.size()) {
+            cout << "Invalid choice. Try again.\n";
+        }
+    } while (choice < 1 || choice > (int)e.booking.participants.size());
+
+    r.name = e.booking.participants[choice - 1].name;
+
+    // Use getValidInput for title and comment
+    r.title = getValidInput("Enter Title: ");
+    r.comment = getValidInput("Enter Comment: ");
+
+    // Get rating
     r.rating = getValidRating(0, 5);
+
     return r;
 }
 
@@ -3228,10 +3320,10 @@ int getValidRating(int min, int max) {
     int rating = -1;
     bool validRating = false;
 
-    cout << "May you giving us a good rating?" << endl;
+    cout << "Please enter a rating (" << min << "-" << max << "):" << endl;
 
     do {
-        cout << "Enter rating(1-5): ";
+        cout << "Enter rating: ";
         getline(cin, input);
 
         if (input.empty()) {
@@ -3241,14 +3333,14 @@ int getValidRating(int min, int max) {
 
         bool isValidNumber = true;
         for (char c : input) {
-            if (!isdigit(c)) {
+            if (!isdigit(static_cast<unsigned char>(c))) {
                 isValidNumber = false;
                 break;
             }
         }
 
         if (!isValidNumber) {
-            cout << "Error: Please enter only numbers (1-5)." << endl;
+            cout << "Error: Please enter only numbers (" << min << "-" << max << ")." << endl;
             continue;
         }
 
@@ -3258,11 +3350,37 @@ int getValidRating(int min, int max) {
             validRating = true;
         }
         else {
-            cout << "Error: Rating must be between 1 and 5." << endl;
+            cout << "Error: Rating must be between " << min << " and " << max << "." << endl;
         }
     } while (!validRating);
 
     return rating;
+}
+const string REPORT_LIST = "report_list.txt";
+
+void loadReportList(vector<string>& reportList) {
+    ifstream in(REPORT_LIST);
+    if (!in) {
+        cout << "No existing report list found.\n";
+        return;
+    }
+    string line;
+    while (getline(in, line)) {
+        if (!line.empty())
+            reportList.push_back(line);
+    }
+    cout << "Loaded " << reportList.size() << " reports.\n";
+}
+
+void saveReportList(const vector<string>& reportList) {
+    ofstream out(REPORT_LIST);
+    if (!out) {
+        cerr << "Error saving report list to " << REPORT_LIST << endl;
+        return;
+    }
+    for (const auto& name : reportList) {
+        out << name << "\n";
+    }
 }
 
 void generateReport(EventState e) {
@@ -3356,28 +3474,45 @@ void generateReport(EventState e) {
     cout << "\nReport successfully saved to: " << filename << endl;
 }
 
-void readReport(const string& filename) {
-    ifstream inFile(filename);
-    if (!inFile) {
+void readReport(vector<string>& reportList) {
+    //refresh Report List
+    loadReportList(reportList);
+
+    if (reportList.empty()) {
+        cout << "No reports available.\n";
+        return;
+    }
+
+    cout << "\n=== Available Reports ===\n";
+    for (size_t i = 0; i < reportList.size(); i++) {
+        cout << i + 1 << ". " << reportList[i] << "\n";
+    }
+
+    cout << "Enter the number of the report to read: ";
+    int choice;
+    cin >> choice;
+    cin.ignore();
+
+    if (choice < 1 || choice > static_cast<int>(reportList.size())) {
+        cout << "Invalid choice.\n";
+        return;
+    }
+
+    string filename = reportList[choice - 1];
+    ifstream in(filename);
+    if (!in) {
         cerr << "Error opening report file: " << filename << endl;
         return;
     }
 
-    cout << "\n" << string(60, '=') << endl;
-    cout << "           READING EVENT REPORT" << endl;
-    cout << string(60, '=') << endl;
-
+    cout << "\n--- Contents of " << filename << " ---\n";
     string line;
-    while (getline(inFile, line)) {
-        cout << line << endl;
+    while (getline(in, line)) {
+        cout << line << "\n";
     }
-
-    cout << string(60, '=') << endl;
-    cout << "       END OF REPORT (" << filename << ")" << endl;
-    cout << string(60, '=') << endl;
-
-    inFile.close();
+    cout << "-----------------------------------\n";
 }
+
 
 time_t stringToDateTime(const string &dateTime) {
     tm t = {};
@@ -3558,18 +3693,22 @@ int main() {
     vector<UserProfile> users;
     vector<Booking> bookings;
     vector<EventAd> ads;
+    vector<string> reportList;
 
     loadUsers(users);
     createDefaultOrg(users);
     saveUsers(users);
-    loadAds(ads);
 
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
     checkDeadlines(bookings);
 
-    loginModule(users,ads,bookings);
+    loadReportList(reportList);
 
+    loginModule(users, ads, bookings, reportList);
+
+    loadAds(ads);
+    marketingModule(ads);
     saveAds(ads);
 
     return 0;

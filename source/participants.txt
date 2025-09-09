@@ -95,3 +95,8 @@ Participants:
   - ID: QQQ12JOH3, Name: John, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Credit Card / Debit Card, Payment Date: 2025-09-10
   - ID: QQQ12QWE4, Name: qwert, Role: Customer, Amount Due: 0, Paid: Yes, Payment Method: Bank Transfer, Payment Date: 2025-09-10
 ------------------------------
+Event ID: 13
+Event Name: 12
+Participants:
+  - ID: 13BBB1, Name: bbb, Role: Host/Vendor, Amount Due: 100, Paid: No, Payment Method: N/A, Payment Date: N/A
+------------------------------
