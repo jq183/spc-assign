@@ -1965,7 +1965,7 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
     do {
         cout << "\n===== Booking Management Menu =====\n";
         cout << "1. Create a new booking\n";
-        cout << "2. View all bookings\n";
+        cout << "2. View your bookings\n";
         cout << "3. Edit a booking\n";
         cout << "4. Delete a booking\n";
         cout << "5. Check deadlines\n";
@@ -1982,11 +1982,11 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
             break;
         }
         case 2: {
-            if (bookings.empty()) {
-                cout << "No bookings found.\n";
-            } else {
-                cout << "\n--- Current Bookings ---\n";
-                for (size_t i = 0; i < bookings.size(); i++) {
+            bool any = false;
+            cout << "\n--- Your Current Bookings ---\n";
+            for (size_t i = 0; i < bookings.size(); i++) {
+                if (bookings[i].organizerName == organizerName) {
+                    any = true;
                     cout << "Event ID: " << bookings[i].eventId << "\n";
                     cout << "Name: " << bookings[i].eventName << "\n";
                     cout << "Type: " << bookings[i].eventType << "\n";
@@ -1999,6 +1999,9 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                     cout << string(50, '-') << "\n";
                 }
             }
+            if (!any) {
+                cout << "No bookings found under your account.\n";
+            }
             break;
         }
         case 3: {
@@ -2009,13 +2012,14 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
             bool found = false;
 
             for (size_t i = 0; i < bookings.size(); i++) {
-                if (bookings[i].eventId == id) {
+                if (bookings[i].eventId == id && bookings[i].organizerName == organizerName) {
                     found = true;
                     cout << "Editing booking: " << bookings[i].eventName << "\n";
 
                     while (true) {
                         string input = getValidInput("Enter new event name: ");
-                        if (!input.empty()) {bookings[i].eventName = input;
+                        if (!input.empty()) {
+                            bookings[i].eventName = input;
                             break;
                         } else {
                             cout << "Event name cannot be empty. Try again.\n";
@@ -2045,7 +2049,6 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                     bookings[i].dateTime = getValidDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ");
                     bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
 
-                    // enforce numeric + non-negative loop
                     while (true) {
                         cout << "Enter new guest limit: ";
                         if ((cin >> bookings[i].guestCount) && bookings[i].guestCount >= 0) {
@@ -2064,17 +2067,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                 }
             }
 
-    if (!found) {
-        cout << "Booking with Event ID " << id << " not found.\n";
-    }
-    break;
+            if (!found) {
+                cout << "Booking with Event ID " << id << " not found under your account.\n";
+            }
+            break;
         }
         case 4: {
             int id;
             cout << "Enter Event ID to delete: ";
             cin >> id;
             cin.ignore();
-            destroyEvent(bookings, id, bookFile, partFile);
+
+            bool deleted = false;
+            for (size_t i = 0; i < bookings.size(); i++) {
+                if (bookings[i].eventId == id && bookings[i].organizerName == organizerName) {
+                    destroyEvent(bookings, id, bookFile, partFile);
+                    deleted = true;
+                    break;
+                }
+            }
+
+            if (!deleted) {
+                cout << "You cannot delete this booking. Either it does not exist or it was not created by you.\n";
+            }
             break;
         }
         case 5: {
