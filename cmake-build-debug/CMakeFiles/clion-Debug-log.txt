@@ -1,0 +1,1 @@
+CMakeLists.txt not found in C:\Users\Acer\CLionProjects\spc-assign Select CMakeLists.txt
