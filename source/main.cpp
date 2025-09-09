@@ -133,6 +133,7 @@ void JoinedEventMenu(vector<Booking>& bookings, const string& organizerName);
 //Booking
 Booking createBooking(int id, vector<Booking>& bookings,const string& organizerName);
 time_t deadline(const string& deadline);
+time_t parseDateTime(const string& dt, bool hasTime);
 void manageBookings(vector<Booking>& bookings, const string& bookFile, const string& partFile, const string& organizerName);
 void saveBookings(vector<Booking>& bookings, const string& file);
 void saveParticipants(vector<Booking>& bookings, const string& file);
@@ -1981,6 +1982,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
             int newId = bookings.empty() ? 1 : bookings.back().eventId + 1;
             Booking newBooking = createBooking(newId, bookings, organizerName);
             cout << "Booking created successfully with ID " << newBooking.eventId << ".\n";
+
+            // Organizer reminder
+            int rChoice;
+            cout << "\nReminder Options:\n";
+            cout << "1. 15 minutes before event\n";
+            cout << "2. 30 minutes before event\n";
+            cout << "3. 1 hour before event\n";
+            cout << "4. 2 hours before event\n";
+            cout << "5. Skip reminder\n";
+            cout << "Enter choice (1-5): ";
+            cin >> rChoice;
+            cin.ignore();
+
+            int offset = -1;
+            if (rChoice == 1) offset = 15;
+            else if (rChoice == 2) offset = 30;
+            else if (rChoice == 3) offset = 60;
+            else if (rChoice == 4) offset = 120;
+
+            if (offset > 0) {
+                addBookingReminders(newBooking, offset);
+            }
+
             break;
         }
         case 2: {
@@ -2018,38 +2042,22 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
                     found = true;
                     cout << "Editing booking: " << bookings[i].eventName << "\n";
 
-                    while (true) {
-                        string input = getValidInput("Enter new event name: ");
-                        if (!input.empty()) {
-                            bookings[i].eventName = input;
-                            break;
-                        } else {
-                            cout << "Event name cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new event type: ");
-                        if (!input.empty()) {
-                            bookings[i].eventType = input;
-                            break;
-                        } else {
-                            cout << "Event type cannot be empty. Try again.\n";
-                        }
-                    }
-
-                    while (true) {
-                        string input = getValidInput("Enter new venue: ");
-                        if (!input.empty()) {
-                            bookings[i].venue = input;
-                            break;
-                        } else {
-                            cout << "Venue cannot be empty. Try again.\n";
-                        }
-                    }
-
+                    bookings[i].eventName = getValidInput("Enter new event name: ");
+                    bookings[i].eventType = getValidInput("Enter new event type: ");
+                    bookings[i].venue = getValidInput("Enter new venue: ");
                     bookings[i].dateTime = getValidDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ");
-                    bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
+
+                    while (true) {
+                        bookings[i].deadline = getValidDateline("Enter new registration deadline (YYYY-MM-DD): ");
+                        time_t deadlineTime = parseDateTime(bookings[i].deadline, false);
+                        time_t eventTime = parseDateTime(bookings[i].dateTime, true);
+
+                        if (deadlineTime <= eventTime) {
+                            break;
+                        } else {
+                            cout << "Deadline cannot be after the event date. Try again.\n";
+                        }
+                    }
 
                     while (true) {
                         cout << "Enter new guest limit: ";
@@ -2065,6 +2073,29 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
 
                     saveBookings(bookings, bookFile);
                     cout << "Booking updated successfully.\n";
+
+                    // Organizer reminder after editing
+                    int rChoice;
+                    cout << "\nReminder Options:\n";
+                    cout << "1. 15 minutes before event\n";
+                    cout << "2. 30 minutes before event\n";
+                    cout << "3. 1 hour before event\n";
+                    cout << "4. 2 hours before event\n";
+                    cout << "5. Skip reminder\n";
+                    cout << "Enter choice (1-5): ";
+                    cin >> rChoice;
+                    cin.ignore();
+
+                    int offset = -1;
+                    if (rChoice == 1) offset = 15;
+                    else if (rChoice == 2) offset = 30;
+                    else if (rChoice == 3) offset = 60;
+                    else if (rChoice == 4) offset = 120;
+
+                    if (offset > 0) {
+                        addBookingReminders(bookings[i], offset);
+                    }
+
                     break;
                 }
             }
@@ -2110,6 +2141,28 @@ void manageBookings(vector<Booking>& bookings, const string& bookFile, const str
     } while (choice != 6);
 }
 
+time_t parseDateTime(const string& dt, bool hasTime) {
+    tm t = {};
+    int year, month, day, hour = 0, minute = 0;
+
+    if (hasTime) {
+        if (sscanf(dt.c_str(), "%d-%d-%d %d:%d", &year, &month, &day, &hour, &minute) != 5)
+            return -1;
+    } else {
+        if (sscanf(dt.c_str(), "%d-%d-%d", &year, &month, &day) != 3)
+            return -1;
+    }
+
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = 0;
+
+    return mktime(&t);
+}
+
 Booking createBooking(int id, vector<Booking>& bookings, const string& organizerName) {
     Booking b;
     b.eventId = id;
@@ -2148,7 +2201,19 @@ Booking createBooking(int id, vector<Booking>& bookings, const string& organizer
     }
 
     b.dateTime = getValidDateTime("Enter date & time (YYYY-MM-DD HH:MM): ");
-    b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
+
+
+    while (true) {
+        b.deadline = getValidDateline("Enter registration deadline (YYYY-MM-DD): ");
+        time_t deadlineTime = parseDateTime(b.deadline, false);
+        time_t eventTime = parseDateTime(b.dateTime, true);
+
+        if (deadlineTime <= eventTime) {
+            break;
+        } else {
+            cout << "Deadline cannot be after the event date. Try again.\n";
+        }
+    }
 
     cout << "Enter maximum number of guests: ";
     while (!(cin >> b.guestCount) || b.guestCount < 0) {
