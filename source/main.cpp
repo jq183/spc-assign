@@ -3182,7 +3182,7 @@ void startMonitoring(Booking b, vector<string>& reportList) {
         }
         case 3: {
             generateReport(e);
-            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+            string filename = "EventReport_" + (e.booking.eventName) + ".txt";
             reportList.push_back(filename);
             saveReportList(reportList);
             continueMonitoring = false;
@@ -3297,7 +3297,7 @@ Review createComment(const EventState e) {
     do {
         cout << "Enter number (1-" << e.booking.participants.size() << "): ";
         cin >> choice;
-
+        cin.ignore();
         if (choice < 1 || choice > (int)e.booking.participants.size()) {
             cout << "Invalid choice. Try again.\n";
         }
@@ -3399,7 +3399,7 @@ void saveReportList(const vector<string>& reportList) {
 void generateReport(EventState e) {
     e.booking.status = "finished";
 
-    string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+    string filename = "EventReport_" + (e.booking.eventName) + ".txt";
 
     ofstream outFile(filename);
     if (!outFile) {
