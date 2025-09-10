@@ -1051,20 +1051,8 @@ void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
     }
 
     int eventChoice;
-    cout << "Select an event to join (1-" << availableEvents.size() << "): ";
-    string input;
-    getline(cin, input);
 
-    try {
-        eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(availableEvents.size())) {
-            cout << "Invalid selection." << endl;
-            return;
-        }
-    } catch (...) {
-        cout << "Invalid input." << endl;
-        return;
-    }
+    eventChoice = getValidatedInput(1, availableEvents.size(), "Select an event to join (1-" + to_string(availableEvents.size()) + "): ");
 
     int selectedEventIndex = availableEvents[eventChoice - 1];
     Booking& selectedEvent = bookings[selectedEventIndex];
