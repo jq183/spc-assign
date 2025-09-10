@@ -3164,13 +3164,13 @@ void startMonitoring(Booking b, vector<string>& reportList) {
                     break;
                 }
             }
-            system("cls");
+            cout<< "________________________Update______________________________";
             printQuickNotes(e);
             break;
         }
         case 3: {
             generateReport(e);
-            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+            string filename = "EventReport_" + (e.booking.eventName) + ".txt";
             reportList.push_back(filename);
             saveReportList(reportList);
             continueMonitoring = false;
@@ -3285,7 +3285,7 @@ Review createComment(const EventState e) {
     do {
         cout << "Enter number (1-" << e.booking.participants.size() << "): ";
         cin >> choice;
-
+        cin.ignore();
         if (choice < 1 || choice > (int)e.booking.participants.size()) {
             cout << "Invalid choice. Try again.\n";
         }
@@ -3352,12 +3352,25 @@ void loadReportList(vector<string>& reportList) {
         cout << "No existing report list found.\n";
         return;
     }
+
     string line;
     while (getline(in, line)) {
-        if (!line.empty())
-            reportList.push_back(line);
+        if (!line.empty()) {
+            // Check if the report name is already in the list
+            bool exists = false;
+            for (const auto& name : reportList) {
+                if (name == line) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                reportList.push_back(line);
+            }
+        }
     }
-    cout << "Loaded " << reportList.size() << " reports.\n";
+
+    cout << "Loaded " << reportList.size() << " unique reports.\n";
 }
 
 void saveReportList(const vector<string>& reportList) {
@@ -3374,7 +3387,7 @@ void saveReportList(const vector<string>& reportList) {
 void generateReport(EventState e) {
     e.booking.status = "finished";
 
-    string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+    string filename = "EventReport_" + (e.booking.eventName) + ".txt";
 
     ofstream outFile(filename);
     if (!outFile) {
@@ -3686,6 +3699,7 @@ int main() {
     loadUsers(users);
     createDefaultOrg(users);
     saveUsers(users);
+    loadAds(ads);
 
     loadBookings(bookings, "bookings.txt");
     loadParticipants(bookings, "participants.txt");
@@ -3695,8 +3709,6 @@ int main() {
 
     loginModule(users, ads, bookings, reportList);
 
-    loadAds(ads);
-    marketingModule(ads);
     saveAds(ads);
 
     return 0;
