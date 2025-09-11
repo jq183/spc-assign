@@ -1051,20 +1051,8 @@ void userJoinEvent(vector<Booking>& bookings, UserProfile& currentUser) {
     }
 
     int eventChoice;
-    cout << "Select an event to join (1-" << availableEvents.size() << "): ";
-    string input;
-    getline(cin, input);
 
-    try {
-        eventChoice = stoi(input);
-        if (eventChoice < 1 || eventChoice > static_cast<int>(availableEvents.size())) {
-            cout << "Invalid selection." << endl;
-            return;
-        }
-    } catch (...) {
-        cout << "Invalid input." << endl;
-        return;
-    }
+    eventChoice = getValidatedInput(1, availableEvents.size(), "Select an event to join (1-" + to_string(availableEvents.size()) + "): ");
 
     int selectedEventIndex = availableEvents[eventChoice - 1];
     Booking& selectedEvent = bookings[selectedEventIndex];
@@ -3182,7 +3170,7 @@ void startMonitoring(Booking b, vector<string>& reportList) {
         }
         case 3: {
             generateReport(e);
-            string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+            string filename = "EventReport_" + (e.booking.eventName) + ".txt";
             reportList.push_back(filename);
             saveReportList(reportList);
             continueMonitoring = false;
@@ -3297,7 +3285,7 @@ Review createComment(const EventState e) {
     do {
         cout << "Enter number (1-" << e.booking.participants.size() << "): ";
         cin >> choice;
-
+        cin.ignore();
         if (choice < 1 || choice > (int)e.booking.participants.size()) {
             cout << "Invalid choice. Try again.\n";
         }
@@ -3399,7 +3387,7 @@ void saveReportList(const vector<string>& reportList) {
 void generateReport(EventState e) {
     e.booking.status = "finished";
 
-    string filename = "EventReport_" + to_string(e.booking.eventId) + ".txt";
+    string filename = "EventReport_" + (e.booking.eventName) + ".txt";
 
     ofstream outFile(filename);
     if (!outFile) {
